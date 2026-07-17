@@ -21,6 +21,9 @@ import ApiResponse from './utils/ApiResponse.js';
 
 const app = express();
 
+// Trust proxy for Render/reverse proxy deployments
+app.set('trust proxy', 1);
+
 // Security middlewares
 app.use(helmet());
 app.use(cors({

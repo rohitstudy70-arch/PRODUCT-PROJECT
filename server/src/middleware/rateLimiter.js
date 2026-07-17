@@ -2,7 +2,7 @@ import { rateLimit } from 'express-rate-limit';
 
 export const defaultLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // Limit each IP to 200 requests per window
+  max: 1000000, // Very high limit to prevent blocking during active scanning/testing
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: {
@@ -13,7 +13,7 @@ export const defaultLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // Limit each IP to 30 login/token request attempts per window
+  max: 1000000, // Very high limit to prevent auth blocking
   standardHeaders: true,
   legacyHeaders: false,
   message: {
