@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: (import.meta as any).env.VITE_API_URL || 'https://product-project-wmc4.onrender.com/api/v1',
   headers: {
     'Content-Type': 'application/json'
   },
@@ -58,7 +58,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post('/api/v1/auth/refresh-token', {}, { withCredentials: true });
+        const apiUrl = (import.meta as any).env.VITE_API_URL || 'https://product-project-wmc4.onrender.com/api/v1';
+        const refreshResponse = await axios.post(`${apiUrl}/auth/refresh-token`, {}, { withCredentials: true });
         const { accessToken } = refreshResponse.data.data;
 
         // Update state
