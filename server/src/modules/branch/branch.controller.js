@@ -1,12 +1,15 @@
 import Branch from './branch.model.js';
 import Organization from '../organization/organization.model.js';
+import Staff from '../staff/staff.model.js';
+import Counter from '../counter/counter.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 import { generatePaginationMeta } from '../../utils/helpers.js';
+import crypto from 'crypto';
 
 export const createBranch = asyncHandler(async (req, res) => {
-  const { name, code, email, phone, address, contactPerson } = req.body;
+  const { name, code, email, phone, address, contactPerson, adminEmail, adminPassword } = req.body;
 
   if (!name || !code || !address || !address.city || !address.state) {
     throw new ApiError(400, 'Branch name, unique code, city, and state are required');
@@ -34,6 +37,31 @@ export const createBranch = asyncHandler(async (req, res) => {
     contactPerson,
     createdBy: req.user._id
   });
+
+  // Automatically create a Branch Admin if email and password are provided
+  if (adminEmail && adminPassword) {
+    // Generate unique employee ID sequence
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'employee' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const employeeId = `EMP${String(counter.seq).padStart(5, '0')}`;
+
+    await Staff.create({
+      organizationId: org._id,
+      branchId: branch._id,
+      firstName: `${name}`,
+      lastName: 'Admin',
+      email: adminEmail,
+      password: adminPassword,
+      phone: phone || '+910000000000',
+      role: 'branch_admin',
+      employeeId,
+      qrCode: crypto.randomUUID(),
+      status: 'active'
+    });
+  }
 
   res.status(201).json(new ApiResponse(201, 'Branch created successfully', branch));
 });

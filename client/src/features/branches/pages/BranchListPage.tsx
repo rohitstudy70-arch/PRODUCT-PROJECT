@@ -49,6 +49,8 @@ export const BranchListPage: React.FC = () => {
   const [pincode, setPincode] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive' | 'suspended'>('active');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
   const { user } = useAuthStore();
 
@@ -83,6 +85,8 @@ export const BranchListPage: React.FC = () => {
     setPincode('');
     setContactPerson('');
     setStatus('active');
+    setAdminEmail('');
+    setAdminPassword('');
     setModalOpen(true);
   };
 
@@ -109,6 +113,11 @@ export const BranchListPage: React.FC = () => {
       return;
     }
 
+    if (!editBranch && (!adminEmail || !adminPassword)) {
+      toast.error('Branch Admin Email and Password are required');
+      return;
+    }
+
     try {
       const payload = {
         name,
@@ -117,7 +126,9 @@ export const BranchListPage: React.FC = () => {
         phone,
         address: { street, city, state, country: 'India', pincode },
         contactPerson,
-        status
+        status,
+        adminEmail,
+        adminPassword
       };
 
       if (editBranch) {
@@ -273,6 +284,32 @@ export const BranchListPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {!editBranch && (
+            <div className="border-t border-slate-850 pt-3 mt-3 space-y-3">
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Branch Admin Login Setup</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400 text-foreground">Admin Email / Username *</label>
+                  <Input 
+                    type="email" 
+                    value={adminEmail} 
+                    onChange={(e) => setAdminEmail(e.target.value)} 
+                    placeholder="ranchi.admin@arshi.com" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-400 text-foreground">Admin Password *</label>
+                  <Input 
+                    type="password" 
+                    value={adminPassword} 
+                    onChange={(e) => setAdminPassword(e.target.value)} 
+                    placeholder="••••••••" 
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
