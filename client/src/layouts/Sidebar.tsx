@@ -69,7 +69,7 @@ export const Sidebar: React.FC = () => {
       label: 'Security Gate',
       path: ROUTES.SECURITY,
       icon: ShieldCheck,
-      roles: ['super_admin', 'security_guard']
+      roles: ['super_admin', 'branch_admin', 'security_guard']
     },
     {
       label: 'Branch Receiving',

@@ -28,10 +28,10 @@ router.post('/', authorize('super_admin'), auditTrail('transfer', 'create'), cre
 router.patch('/:id/approve', authorize('super_admin'), auditTrail('transfer', 'approve'), approveTransfer);
 
 // Preparing dispatch (store room scans)
-router.post('/dispatch-prepare', authorize('super_admin', 'store_manager', 'staff'), scanItemForDispatch);
+router.post('/dispatch-prepare', authorize('super_admin', 'branch_admin', 'store_manager', 'staff'), scanItemForDispatch);
 
 // Security scan exit gate (check-out)
-router.post('/gate-exit', authorize('super_admin', 'security_guard'), gateExitVerification);
+router.post('/gate-exit', authorize('super_admin', 'branch_admin', 'security_guard'), gateExitVerification);
 
 // Security scan entry gate + receive goods (check-in)
 router.post('/gate-entry', authorize('super_admin', 'branch_admin'), gateEntryReceive);

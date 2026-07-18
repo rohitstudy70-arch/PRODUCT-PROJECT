@@ -47,7 +47,7 @@ export const DashboardPage: React.FC = () => {
       if (!user) return;
       try {
         setLoading(true);
-        if (user.role === 'super_admin' || user.role === 'store_manager') {
+        if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
           const response = await api.get('/dashboard/stats');
           setStats(response.data.data);
         } else {
