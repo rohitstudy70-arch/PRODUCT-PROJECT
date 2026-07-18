@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode } from 'lucide-react';
+import { Plus, Trash, QrCode, Download } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Product {
@@ -54,6 +54,7 @@ export const ProductListPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -143,6 +144,11 @@ export const ProductListPage: React.FC = () => {
       const response = await api.post(`/products/${productId}/generate-qr`);
       const qrDoc = response.data.data;
       
+      const prod = products.find(p => p._id === productId);
+      if (prod) {
+        prod.qrCode = qrDoc.code;
+        setSelectedProduct(prod);
+      }
       setQrCodeData(qrDoc.code);
       setQrModalOpen(true);
       fetchData();
@@ -151,9 +157,45 @@ export const ProductListPage: React.FC = () => {
     }
   };
 
-  const handleOpenQRView = (code: string) => {
-    setQrCodeData(code);
+  const handleOpenQRView = (product: Product) => {
+    setQrCodeData(product.qrCode || null);
+    setSelectedProduct(product);
     setQrModalOpen(true);
+  };
+
+  const handleDownloadQR = () => {
+    const svgElement = document.getElementById('product-qr-svg');
+    if (!svgElement) return;
+    
+    const svgString = new XMLSerializer().serializeToString(svgElement);
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const blobURL = URL.createObjectURL(svgBlob);
+    
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 300;
+      const context = canvas.getContext('2d');
+      if (context) {
+        // Draw white background
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, 300, 300);
+        // Draw SVG image centered
+        context.drawImage(image, 40, 40, 220, 220);
+        
+        // Export to PNG
+        const png = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = png;
+        downloadLink.download = `arshi-tag-${selectedProduct?.productId || 'qr'}.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        toast.success('Product tag QR downloaded successfully!');
+      }
+    };
+    image.src = blobURL;
   };
 
   const handleDelete = async (id: string) => {
@@ -198,7 +240,7 @@ export const ProductListPage: React.FC = () => {
       accessorKey: 'qrCode',
       render: (item) => (
         item.qrCode ? (
-          <Button variant="ghost" size="sm" onClick={() => handleOpenQRView(item.qrCode!)} className="h-7 text-emerald-400 p-1">
+          <Button variant="ghost" size="sm" onClick={() => handleOpenQRView(item)} className="h-7 text-emerald-400 p-1">
             <QrCode className="h-4 w-4 mr-1" />
             <span>View</span>
           </Button>
@@ -335,6 +377,7 @@ export const ProductListPage: React.FC = () => {
           <div className="p-4 bg-white rounded-xl shadow-lg border border-slate-200">
             {qrCodeData && (
               <QRCodeSVG
+                id="product-qr-svg"
                 value={qrCodeData}
                 size={220}
                 level="M"
@@ -342,10 +385,22 @@ export const ProductListPage: React.FC = () => {
             )}
           </div>
           <div className="text-center">
-            <p className="text-sm font-bold text-slate-200">UUID Label ID</p>
-            <p className="text-xs text-slate-500 font-mono select-all mt-1">{qrCodeData}</p>
+            {selectedProduct && (
+              <div className="mb-2">
+                <p className="text-sm font-bold text-slate-200">{selectedProduct.name}</p>
+                <p className="text-xs text-slate-400 font-semibold mt-0.5">{selectedProduct.model || 'N/A'}</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5">SN: {selectedProduct.serialNumber || 'N/A'}</p>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">UUID Label ID</p>
+            <p className="text-[10px] text-slate-500 font-mono select-all mt-1">{qrCodeData}</p>
           </div>
-          <Button onClick={() => setQrModalOpen(false)} className="w-full mt-4">Close Label</Button>
+          
+          <Button onClick={handleDownloadQR} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center space-x-1.5 cursor-pointer">
+            <Download className="h-4 w-4" />
+            <span>Download QR Tag (PNG)</span>
+          </Button>
+          <Button variant="outline" onClick={() => setQrModalOpen(false)} className="w-full">Close</Button>
         </div>
       </Dialog>
     </div>
