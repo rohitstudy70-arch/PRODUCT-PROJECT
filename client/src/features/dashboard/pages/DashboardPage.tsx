@@ -244,69 +244,85 @@ export const DashboardPage: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Products"
-          value={stats?.totalProducts || 0}
-          icon={Package}
-          colorClass="text-indigo-400"
-          description="Assets registered in database"
-        />
-        <StatCard
-          title="Available Stock"
-          value={stats?.availableProducts || 0}
-          icon={CheckCircle}
-          colorClass="text-emerald-400"
-          description="Available for dispatch transfers"
-        />
-        <StatCard
-          title="In Transit"
-          value={stats?.inTransitProducts || 0}
-          icon={Truck}
-          colorClass="text-blue-400"
-          description="Currently moving on routes"
-        />
-        <StatCard
-          title="Assigned to Staff"
-          value={stats?.assignedProducts || 0}
-          icon={UserCheck}
-          colorClass="text-purple-400"
-          description="In custody of staff / field reps"
-        />
-        <StatCard
-          title="Missing / Mismatch"
-          value={stats?.missingProducts || 0}
-          icon={AlertTriangle}
-          colorClass="text-amber-400"
-          description="Discrepancy alert items"
-        />
-        <StatCard
-          title="Transfers Today"
-          value={stats?.todayTransfers || 0}
-          icon={ArrowRightLeft}
-          colorClass="text-pink-400"
-          description="New transfers registered today"
-        />
-        <StatCard
-          title="Completed Transfers"
-          value={stats?.completedTransfers || 0}
-          icon={TrendingUp}
-          colorClass="text-indigo-400"
-          description="Successful inbound arrivals"
-        />
-        <StatCard
-          title="Gate Scan Rejections"
-          value={stats?.rejectedScans || 0}
-          icon={XOctagon}
-          colorClass="text-red-400"
-          description="Failed security gate checks"
-        />
+        <Link to={ROUTES.PRODUCTS} className="block cursor-pointer">
+          <StatCard
+            title="Total Products"
+            value={stats?.totalProducts || 0}
+            icon={Package}
+            colorClass="text-indigo-400"
+            description="Assets registered in database"
+          />
+        </Link>
+        <Link to={ROUTES.INVENTORY} className="block cursor-pointer">
+          <StatCard
+            title="Available Stock"
+            value={stats?.availableProducts || 0}
+            icon={CheckCircle}
+            colorClass="text-emerald-400"
+            description="Available for dispatch transfers"
+          />
+        </Link>
+        <Link to={ROUTES.TRANSFERS} className="block cursor-pointer">
+          <StatCard
+            title="In Transit"
+            value={stats?.inTransitProducts || 0}
+            icon={Truck}
+            colorClass="text-blue-400"
+            description="Currently moving on routes"
+          />
+        </Link>
+        <Link to={ROUTES.TRANSFERS} className="block cursor-pointer">
+          <StatCard
+            title="Assigned to Staff"
+            value={stats?.assignedProducts || 0}
+            icon={UserCheck}
+            colorClass="text-purple-400"
+            description="In custody of staff / field reps"
+          />
+        </Link>
+        <Link to={ROUTES.PRODUCTS} className="block cursor-pointer">
+          <StatCard
+            title="Missing / Mismatch"
+            value={stats?.missingProducts || 0}
+            icon={AlertTriangle}
+            colorClass="text-amber-400"
+            description="Discrepancy alert items"
+          />
+        </Link>
+        <Link to={ROUTES.TRANSFERS} className="block cursor-pointer">
+          <StatCard
+            title="Transfers Today"
+            value={stats?.todayTransfers || 0}
+            icon={ArrowRightLeft}
+            colorClass="text-pink-400"
+            description="New transfers registered today"
+          />
+        </Link>
+        <Link to={ROUTES.TRANSFERS} className="block cursor-pointer">
+          <StatCard
+            title="Completed Transfers"
+            value={stats?.completedTransfers || 0}
+            icon={TrendingUp}
+            colorClass="text-indigo-400"
+            description="Successful inbound arrivals"
+          />
+        </Link>
+        <Link to={ROUTES.AUDIT} className="block cursor-pointer">
+          <StatCard
+            title="Gate Scan Rejections"
+            value={stats?.rejectedScans || 0}
+            icon={XOctagon}
+            colorClass="text-red-400"
+            description="Failed security gate checks"
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Branch stock allocation */}
         <Card className="lg:col-span-2 glass-card">
           <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center space-x-2">
+            <CardTitle className="text-base font-bold flex items-center space-x-2 text-foreground">
               <Boxes className="h-5 w-5 text-indigo-400" />
               <span>Branch Stock Allocation Summary</span>
             </CardTitle>
@@ -315,10 +331,10 @@ export const DashboardPage: React.FC = () => {
             {stats?.branchStocks && stats.branchStocks.length > 0 ? (
               <div className="space-y-4">
                 {stats.branchStocks.map((branch, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-950/40 rounded-lg border border-slate-800/40">
+                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border border-border">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-200">{branch.branchName}</h4>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                      <h4 className="text-sm font-bold text-foreground">{branch.branchName}</h4>
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">
                         Code: {branch.branchCode}
                       </p>
                     </div>
@@ -329,7 +345,7 @@ export const DashboardPage: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="h-40 flex items-center justify-center text-slate-500 text-sm">
+              <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">
                 No branch stock reports generated.
               </div>
             )}
@@ -339,24 +355,32 @@ export const DashboardPage: React.FC = () => {
         {/* Quick Actions Panel */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center space-x-2">
+            <CardTitle className="text-base font-bold flex items-center space-x-2 text-foreground">
               <Settings className="h-5 w-5 text-indigo-400" />
               <span>Quick Actions</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="p-3 bg-slate-950/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-slate-800/40 transition-colors">
-              <h4 className="text-sm font-bold text-slate-200">Register New Asset</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Add products and auto-assign unique tags</p>
-            </div>
-            <div className="p-3 bg-slate-950/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-slate-800/40 transition-colors">
-              <h4 className="text-sm font-bold text-slate-200">Initiate Asset Transfer</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Start a multi-branch logistical route</p>
-            </div>
-            <div className="p-3 bg-slate-950/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-slate-800/40 transition-colors">
-              <h4 className="text-sm font-bold text-slate-200">Onboard Staff Member</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Add employee, assign role, and generate QR ID</p>
-            </div>
+            <Link to={ROUTES.PRODUCTS} className="block">
+              <div className="p-3 bg-muted/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-border transition-colors">
+                <h4 className="text-sm font-bold text-foreground">Register New Asset</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">Add products and auto-assign unique tags</p>
+              </div>
+            </Link>
+            <Link to={ROUTES.TRANSFERS} className="block">
+              <div className="p-3 bg-muted/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-border transition-colors">
+                <h4 className="text-sm font-bold text-foreground">Initiate Asset Transfer</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">Start a multi-branch logistical route</p>
+              </div>
+            </Link>
+            {user?.role === 'super_admin' && (
+              <Link to={ROUTES.STAFF} className="block">
+                <div className="p-3 bg-muted/40 hover:bg-indigo-600/10 cursor-pointer rounded-lg border border-border transition-colors">
+                  <h4 className="text-sm font-bold text-foreground">Onboard Staff Member</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Add employee, assign role, and generate QR ID</p>
+                </div>
+              </Link>
+            )}
           </CardContent>
         </Card>
       </div>

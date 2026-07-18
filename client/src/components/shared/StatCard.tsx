@@ -31,13 +31,13 @@ export const StatCard: React.FC<StatCardProps> = ({
       <Card className="glass-card shadow-lg hover:shadow-indigo-500/5 transition-all duration-300">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-400">{title}</p>
-            <div className={`p-2 rounded-lg bg-slate-800/80 ${colorClass}`}>
+            <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+            <div className={`p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 ${colorClass}`}>
               <Icon className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4">
-            <h3 className="text-3xl font-extrabold tracking-tight text-slate-50">{value}</h3>
+            <h3 className="text-3xl font-extrabold tracking-tight text-foreground">{value}</h3>
             {trend && (
               <p className="mt-1 text-xs flex items-center">
                 <span
