@@ -20,6 +20,10 @@ interface Transfer {
   status: string;
   totalItems: number;
   createdAt: string;
+  approvedAt?: string;
+  dispatchedAt?: string;
+  receivedAt?: string;
+  arrivedAt?: string;
 }
 
 interface TransferDetail extends Transfer {
@@ -346,9 +350,35 @@ export const TransferPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Scan Products to Add */}
-          <div className="flex flex-col space-y-2 border border-slate-800 bg-slate-900/40 rounded-lg p-3">
-            <label className="text-xs font-semibold text-slate-400">Scan Product QR / Serial Code (Warehouse Box) *</label>
+          {/* Scan / Dropdown Products Selection */}
+          <div className="flex flex-col space-y-3 border border-slate-800 bg-slate-900/40 rounded-lg p-3">
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Select Available Devices at Source Branch</label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleAddProductByScan(e.target.value);
+                    e.target.value = ''; // Reset selection
+                  }
+                }}
+                disabled={!fromBranchId}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus-visible:ring-indigo-500 cursor-pointer"
+              >
+                <option value="">Select product to add...</option>
+                {products
+                  .filter(p => p.currentBranchId && (p.currentBranchId === fromBranchId || p.currentBranchId._id === fromBranchId) && p.status === 'available')
+                  .map(p => (
+                    <option key={p._id} value={p.productId}>
+                      {`${p.name} (${p.productId} | SN: ${p.serialNumber || 'N/A'})`}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Or Scan Product QR / Serial Code (Warehouse Box)</label>
+            </div>
             <div className="flex space-x-2">
               <Input
                 value={scanInput}
@@ -466,6 +496,28 @@ export const TransferPage: React.FC = () => {
                     ? `${selectedTransfer.assignedStaffId.firstName} ${selectedTransfer.assignedStaffId.lastName} (${selectedTransfer.assignedStaffId.employeeId})`
                     : 'Unassigned'}
                 </p>
+              </div>
+
+              <div className="mt-2 col-span-2 border-t border-slate-850 pt-2 space-y-1.5">
+                <p className="text-slate-400 font-semibold mb-1">Logistical Timestamps</p>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-300 bg-slate-950/60 p-2.5 rounded border border-slate-850/80">
+                  <div>
+                    <span className="text-slate-500 font-bold">CREATED:</span>
+                    <p className="font-mono mt-0.5">{selectedTransfer.createdAt ? new Date(selectedTransfer.createdAt).toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">APPROVED:</span>
+                    <p className="font-mono mt-0.5">{selectedTransfer.approvedAt ? new Date(selectedTransfer.approvedAt as string).toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div className="mt-1">
+                    <span className="text-slate-500 font-bold">DISPATCHED:</span>
+                    <p className="font-mono mt-0.5">{selectedTransfer.dispatchedAt ? new Date(selectedTransfer.dispatchedAt as string).toLocaleString() : 'N/A'}</p>
+                  </div>
+                  <div className="mt-1">
+                    <span className="text-slate-500 font-bold">RECEIVED:</span>
+                    <p className="font-mono mt-0.5">{(selectedTransfer.arrivedAt || selectedTransfer.receivedAt) ? new Date((selectedTransfer.arrivedAt || selectedTransfer.receivedAt) as string).toLocaleString() : 'N/A'}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
