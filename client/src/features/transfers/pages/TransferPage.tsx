@@ -528,9 +528,9 @@ export const TransferPage: React.FC = () => {
                 {selectedTransfer.items?.map((item: any) => (
                   <div key={item._id} className="flex items-center justify-between p-2.5 bg-slate-900/40 border border-slate-800/50 rounded-lg">
                     <div>
-                      <p className="text-xs font-bold text-slate-200">{item.productId.name}</p>
+                      <p className="text-xs font-bold text-slate-200">{item.productId?.name || 'Unknown Product'}</p>
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                        ID: {item.productId.productId} | SN: {item.productId.serialNumber || 'N/A'}
+                        ID: {item.productId?.productId || 'N/A'} | SN: {item.productId?.serialNumber || 'N/A'}
                       </p>
                     </div>
                     <Badge variant={item.status === 'scanned' ? 'success' : 'secondary'}>
