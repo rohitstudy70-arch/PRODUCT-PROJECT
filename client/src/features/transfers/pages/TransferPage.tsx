@@ -109,7 +109,10 @@ export const TransferPage: React.FC = () => {
   }, [createModalOpen]);
 
   const handleOpenCreateModal = () => {
-    setFromBranchId('');
+    const branchIdStr = user?.branchId 
+      ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
+      : '';
+    setFromBranchId(user?.role !== 'super_admin' ? branchIdStr : '');
     setToBranchId('');
     setAssignedStaffId('');
     setSelectedProductIds([]);
@@ -273,7 +276,7 @@ export const TransferPage: React.FC = () => {
       <Toaster position="top-right" theme="dark" closeButton />
 
       <PageHeader title="Logistical Transfers" subtitle="Oversee dispatch logs, route status, and entry clearance checkpoints">
-        {user?.role === 'super_admin' && (
+        {(user?.role === 'super_admin' || user?.role === 'branch_admin') && (
           <Button onClick={handleOpenCreateModal} className="flex items-center space-x-1">
             <Plus className="h-4 w-4" />
             <span>Create Transfer</span>
@@ -310,7 +313,8 @@ export const TransferPage: React.FC = () => {
               <select
                 value={fromBranchId}
                 onChange={(e) => setFromBranchId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                disabled={user?.role !== 'super_admin'}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <option value="">Select source</option>
                 {branches.map(b => (

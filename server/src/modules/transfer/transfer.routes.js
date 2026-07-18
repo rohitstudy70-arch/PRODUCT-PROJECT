@@ -24,7 +24,7 @@ router.get('/active-by-staff/:staffQrCode', getActiveTransferByStaff);
 router.get('/:id', getTransferById);
 
 // Super admin creates and approves transfers
-router.post('/', authorize('super_admin'), auditTrail('transfer', 'create'), createTransfer);
+router.post('/', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'create'), createTransfer);
 router.patch('/:id/approve', authorize('super_admin'), auditTrail('transfer', 'approve'), approveTransfer);
 
 // Preparing dispatch (store room scans)
