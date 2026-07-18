@@ -135,8 +135,8 @@ const seed = async () => {
       status: 'active'
     });
 
-    // Seed other role types for testing
-    const branchAdmin = await Staff.create({
+    // Seed Patna Branch Users
+    const patnaAdmin = await Staff.create({
       organizationId: org._id,
       branchId: patnaBranch._id,
       firstName: 'Patna',
@@ -149,12 +149,12 @@ const seed = async () => {
       status: 'active'
     });
 
-    const storeMgr = await Staff.create({
+    const patnaMgr = await Staff.create({
       organizationId: org._id,
       branchId: patnaBranch._id,
-      firstName: 'Store',
+      firstName: 'Patna Store',
       lastName: 'Manager',
-      email: 'store.mgr@arshi.com',
+      email: 'patna.mgr@arshi.com',
       password: 'Admin@123',
       phone: '+919876543211',
       role: 'store_manager',
@@ -162,12 +162,12 @@ const seed = async () => {
       status: 'active'
     });
 
-    const guard = await Staff.create({
+    const patnaGuard = await Staff.create({
       organizationId: org._id,
       branchId: patnaBranch._id,
-      firstName: 'Security',
+      firstName: 'Patna Security',
       lastName: 'Guard',
-      email: 'security.guard@arshi.com',
+      email: 'patna.guard@arshi.com',
       password: 'Admin@123',
       phone: '+919876543212',
       role: 'security_guard',
@@ -175,7 +175,60 @@ const seed = async () => {
       status: 'active'
     });
 
-    // Seed courier Rahul (Assigned to main Purnea Branch)
+    const patnaStaff = await Staff.create({
+      organizationId: org._id,
+      branchId: patnaBranch._id,
+      firstName: 'Patna Courier',
+      lastName: 'Staff',
+      email: 'patna.staff@arshi.com',
+      password: 'Admin@123',
+      phone: '+919876543215',
+      role: 'staff',
+      employeeId: 'EMP00010',
+      status: 'active'
+    });
+
+    // Seed Purnea Branch Users (other than Super Admin)
+    const purneaAdmin = await Staff.create({
+      organizationId: org._id,
+      branchId: purneaBranch._id,
+      firstName: 'Purnea',
+      lastName: 'Admin',
+      email: 'purnea.admin@arshi.com',
+      password: 'Admin@123',
+      phone: '+919876543216',
+      role: 'branch_admin',
+      employeeId: 'EMP00007',
+      status: 'active'
+    });
+
+    const purneaMgr = await Staff.create({
+      organizationId: org._id,
+      branchId: purneaBranch._id,
+      firstName: 'Purnea Store',
+      lastName: 'Manager',
+      email: 'purnea.mgr@arshi.com',
+      password: 'Admin@123',
+      phone: '+919876543217',
+      role: 'store_manager',
+      employeeId: 'EMP00008',
+      status: 'active'
+    });
+
+    const purneaGuard = await Staff.create({
+      organizationId: org._id,
+      branchId: purneaBranch._id,
+      firstName: 'Purnea Security',
+      lastName: 'Guard',
+      email: 'purnea.guard@arshi.com',
+      password: 'Admin@123',
+      phone: '+919876543218',
+      role: 'security_guard',
+      employeeId: 'EMP00009',
+      status: 'active'
+    });
+
+    // Seed courier Rahul (Assigned to Purnea Branch)
     const courierRahul = await Staff.create({
       organizationId: org._id,
       branchId: purneaBranch._id,
@@ -189,7 +242,7 @@ const seed = async () => {
       status: 'active'
     });
 
-    // Seed courier Sunil KP (Assigned to main Purnea Branch)
+    // Seed courier Sunil KP (Assigned to Purnea Branch)
     const courierSunil = await Staff.create({
       organizationId: org._id,
       branchId: purneaBranch._id,
@@ -204,12 +257,23 @@ const seed = async () => {
     });
 
     // Update Counter sequence
-    await Counter.findOneAndUpdate({ name: 'employee' }, { seq: 6 });
+    await Counter.findOneAndUpdate({ name: 'employee' }, { seq: 10 });
 
     logger.info('Staff Seeded. Generating Staff QRs...');
 
     // Generate QRs for staff (representing Org Admin generation)
-    const staffMembers = [superAdmin, branchAdmin, storeMgr, guard, courierRahul, courierSunil];
+    const staffMembers = [
+      superAdmin, 
+      patnaAdmin, 
+      patnaMgr, 
+      patnaGuard, 
+      patnaStaff,
+      purneaAdmin, 
+      purneaMgr, 
+      purneaGuard, 
+      courierRahul, 
+      courierSunil
+    ];
     for (const member of staffMembers) {
       const qrUUID = crypto.randomUUID();
       let branchName = 'Main Head Office';
