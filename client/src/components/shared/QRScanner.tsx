@@ -26,6 +26,26 @@ export const QRScanner: React.FC<QRScannerProps> = ({
   const bufferRef = useRef<string>('');
   const lastKeyTimeRef = useRef<number>(0);
 
+  // Throttling references for camera scanner success
+  const lastScanTimeRef = useRef<number>(0);
+  const lastScanTextRef = useRef<string>('');
+
+  const handleScanResult = (decodedText: string) => {
+    const now = Date.now();
+    // 1. Same code scan throttling: ignore if scanned same code within 3.5 seconds
+    if (decodedText === lastScanTextRef.current && (now - lastScanTimeRef.current) < 3500) {
+      return;
+    }
+    // 2. Cross scan throttling: ignore any scan within 1.5 seconds to avoid rapid multi-firing
+    if ((now - lastScanTimeRef.current) < 1500) {
+      return;
+    }
+
+    lastScanTimeRef.current = now;
+    lastScanTextRef.current = decodedText;
+    onScanSuccess(decodedText);
+  };
+
   useEffect(() => {
     if (scannerMode !== 'camera' || !active) return;
 
@@ -58,7 +78,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
               }
             },
             (decodedText) => {
-              onScanSuccess(decodedText);
+              handleScanResult(decodedText);
             },
             () => {
               // silent fail for scans in progress
@@ -77,7 +97,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
               }
             },
             (decodedText) => {
-              onScanSuccess(decodedText);
+              handleScanResult(decodedText);
             },
             () => {
               // silent fail for scans in progress
