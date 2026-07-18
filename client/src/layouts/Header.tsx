@@ -32,7 +32,7 @@ export const Header: React.FC = () => {
   const branchName = user?.branchId ? user.branchId.name : 'Central Head Office';
 
   return (
-    <header className="h-16 border-b border-slate-800/80 bg-slate-900/40 backdrop-blur-md px-6 flex items-center justify-between relative z-20">
+    <header className="h-16 border-b border-border bg-card/40 backdrop-blur-md px-6 flex items-center justify-between relative z-20">
       {/* Left Breadcrumbs & location */}
       <div className="flex items-center">
         <Button

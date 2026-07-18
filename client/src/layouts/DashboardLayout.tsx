@@ -34,7 +34,7 @@ export const DashboardLayout: React.FC = () => {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden relative">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div 
@@ -52,7 +52,7 @@ export const DashboardLayout: React.FC = () => {
         <Header />
 
         {/* Inner page viewports */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
