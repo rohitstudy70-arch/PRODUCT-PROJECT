@@ -176,9 +176,13 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Cannot prepare dispatch. Current status is ${transfer.status}`);
   }
 
-  // Find product by QR UUID code or Serial Number
+  // Find product by QR UUID code, Serial Number, or Product ID
   const product = await Product.findOne({
-    $or: [{ qrCode: productQrCode }, { serialNumber: productQrCode }]
+    $or: [
+      { qrCode: productQrCode },
+      { serialNumber: productQrCode },
+      { productId: productQrCode }
+    ]
   });
 
   if (!product) {
