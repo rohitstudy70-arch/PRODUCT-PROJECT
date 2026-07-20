@@ -65,6 +65,7 @@ export const TransferPage: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [scanInput, setScanInput] = useState('');
   const [showCameraInModal, setShowCameraInModal] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(false);
 
   const { user } = useAuthStore();
 
@@ -83,58 +84,79 @@ export const TransferPage: React.FC = () => {
     }
   };
 
-  const fetchFormMetadata = async () => {
+  // Fetch ALL branches - called on page mount AND when modal opens
+  const fetchBranches = async () => {
+    setBranchesLoading(true);
     try {
       const brRes = await api.get('/branches', { params: { limit: 100 } });
-      const branchList: any[] = brRes.data.data || [];
-      console.log('[TransferPage] Fetched branches:', branchList.map((b: any) => ({ _id: b._id, name: b.name, code: b.code })));
-      
+      const branchList: any[] = brRes.data?.data || [];
+      console.log('[TransferPage] Fetched branches count:', branchList.length, branchList.map((b: any) => ({ _id: b._id, name: b.name, code: b.code })));
+
+      if (branchList.length === 0) {
+        toast.error('No branches found. Please add branches first.');
+        setBranchesLoading(false);
+        return branchList;
+      }
+
       // Sort Central Branch (Purnea / PRN) to top of the list
       const sorted = [...branchList].sort((a: any, b: any) => {
-        const isAPurnea = a.code === 'PRN' || a.name.toLowerCase().includes('purnea') || a.name.toLowerCase().includes('central');
-        const isBPurnea = b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central');
-        if (isAPurnea && !isBPurnea) return -1;
-        if (isBPurnea && !isAPurnea) return 1;
+        const isACentral = a.code === 'PRN' || a.name.toLowerCase().includes('purnea') || a.name.toLowerCase().includes('central');
+        const isBCentral = b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central');
+        if (isACentral && !isBCentral) return -1;
+        if (isBCentral && !isACentral) return 1;
         return a.name.localeCompare(b.name);
       });
       setBranches(sorted);
-
-      // Auto-select default source branch
-      const userBranchIdStr = user?.branchId 
-        ? (typeof user.branchId === 'object' ? (user.branchId as any)._id : user.branchId)
-        : '';
-      const centralBranch = sorted.find((b: any) => b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central'));
-      const defaultId = userBranchIdStr || (centralBranch ? centralBranch._id : (sorted[0] ? sorted[0]._id : ''));
-      console.log('[TransferPage] Default fromBranchId:', defaultId, 'userBranchId:', userBranchIdStr, 'centralBranch:', centralBranch?.name);
-
-      setFromBranchId(defaultId);
-
-      const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
-      setStaffList(stRes.data.data || []);
-
-      const prRes = await api.get('/products', { params: { limit: 100, status: 'available' } });
-      setProducts(prRes.data.data || []);
-    } catch (err) {
-      console.error('[TransferPage] Error fetching form metadata:', err);
+      setBranchesLoading(false);
+      return sorted;
+    } catch (err: any) {
+      console.error('[TransferPage] Error fetching branches:', err);
+      toast.error('Failed to load branches: ' + (err.response?.data?.message || err.message || 'Server error'));
+      setBranchesLoading(false);
+      return [];
     }
   };
+
+  const fetchStaffAndProducts = async () => {
+    try {
+      const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
+      setStaffList(stRes.data?.data || []);
+
+      const prRes = await api.get('/products', { params: { limit: 100, status: 'available' } });
+      setProducts(prRes.data?.data || []);
+    } catch (err) {
+      console.error('[TransferPage] Error fetching staff/products:', err);
+    }
+  };
+
+  // Pre-fetch branches on page mount so they're ready before modal opens
+  useEffect(() => {
+    fetchTransfers();
+    fetchBranches();
+  }, []);
 
   useEffect(() => {
     fetchTransfers();
   }, [page, statusFilter]);
 
+  // When modal opens, refresh branches + fetch staff & products
   useEffect(() => {
     if (createModalOpen) {
-      fetchFormMetadata();
+      fetchBranches().then((brList) => {
+        // Auto-select default source branch after fresh fetch
+        const userBranchIdStr = user?.branchId
+          ? (typeof user.branchId === 'object' ? (user.branchId as any)._id : user.branchId)
+          : '';
+        const centralBranch = (brList || []).find((b: any) => b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central'));
+        const defaultId = userBranchIdStr || (centralBranch ? centralBranch._id : ((brList || [])[0] ? (brList || [])[0]._id : ''));
+        console.log('[TransferPage] Setting fromBranchId:', defaultId, '| centralBranch:', centralBranch?.name, '| total branches:', (brList || []).length);
+        setFromBranchId(defaultId);
+      });
+      fetchStaffAndProducts();
     }
   }, [createModalOpen]);
 
   const handleOpenCreateModal = () => {
-    const purneaBranch = branches.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'));
-    const defaultBranchId = user?.branchId 
-      ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
-      : (purneaBranch ? purneaBranch._id : (branches[0] ? branches[0]._id : ''));
-    setFromBranchId(defaultBranchId);
     setToBranchId('');
     setAssignedStaffId('');
     setSelectedProductIds([]);
@@ -332,18 +354,33 @@ export const TransferPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col space-y-1">
               <label className="text-xs font-semibold text-slate-400">Source Branch *</label>
-              <select
-                value={fromBranchId}
-                onChange={(e) => setFromBranchId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
-              >
-                <option value="">Select source branch</option>
-                {branches.map(b => (
-                  <option key={b._id} value={b._id}>
-                    {b.code === 'PRN' ? `★ ${b.name}` : b.name}
-                  </option>
-                ))}
-              </select>
+              {branchesLoading ? (
+                <div className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-400 items-center">
+                  <span className="animate-pulse">Loading branches...</span>
+                </div>
+              ) : branches.length === 0 ? (
+                <div className="flex flex-col space-y-1">
+                  <div className="flex h-10 w-full rounded-md border border-red-800 bg-red-950/30 px-3 py-2 text-sm text-red-400 items-center">
+                    No branches loaded
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => fetchBranches()} className="text-xs">
+                    ↻ Retry Loading Branches
+                  </Button>
+                </div>
+              ) : (
+                <select
+                  value={fromBranchId}
+                  onChange={(e) => setFromBranchId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
+                >
+                  <option value="">Select source branch</option>
+                  {branches.map(b => (
+                    <option key={b._id} value={b._id}>
+                      {b.code === 'PRN' ? `★ ${b.name}` : b.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="flex flex-col space-y-1">
               <label className="text-xs font-semibold text-slate-400">Destination Branch *</label>
