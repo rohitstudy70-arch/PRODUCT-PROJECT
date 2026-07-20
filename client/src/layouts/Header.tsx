@@ -55,6 +55,12 @@ export const Header: React.FC = () => {
       <div className="flex items-center space-x-4">
         {user && (
           <>
+            {user.dutyStatus === 'ON_DUTY' && (
+              <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-bold animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>LIVE DUTY GPS ON</span>
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
