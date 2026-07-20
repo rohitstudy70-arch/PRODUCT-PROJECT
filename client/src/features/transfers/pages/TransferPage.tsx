@@ -87,32 +87,35 @@ export const TransferPage: React.FC = () => {
     try {
       const brRes = await api.get('/branches', { params: { limit: 100 } });
       const branchList: any[] = brRes.data.data || [];
+      console.log('[TransferPage] Fetched branches:', branchList.map((b: any) => ({ _id: b._id, name: b.name, code: b.code })));
       
-      // Sort Purnea (Central Office) to top
-      const sorted = [...branchList].sort((a, b) => {
-        const isAPurnea = a.code === 'PRN' || a.name.toLowerCase().includes('purnea');
-        const isBPurnea = b.code === 'PRN' || b.name.toLowerCase().includes('purnea');
-        if (isAPurnea) return -1;
-        if (isBPurnea) return 1;
+      // Sort Central Branch (Purnea / PRN) to top of the list
+      const sorted = [...branchList].sort((a: any, b: any) => {
+        const isAPurnea = a.code === 'PRN' || a.name.toLowerCase().includes('purnea') || a.name.toLowerCase().includes('central');
+        const isBPurnea = b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central');
+        if (isAPurnea && !isBPurnea) return -1;
+        if (isBPurnea && !isAPurnea) return 1;
         return a.name.localeCompare(b.name);
       });
       setBranches(sorted);
 
+      // Auto-select default source branch
       const userBranchIdStr = user?.branchId 
-        ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
+        ? (typeof user.branchId === 'object' ? (user.branchId as any)._id : user.branchId)
         : '';
-      const purneaBranch = sorted.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'));
-      const defaultId = userBranchIdStr || (purneaBranch ? purneaBranch._id : (sorted[0] ? sorted[0]._id : ''));
+      const centralBranch = sorted.find((b: any) => b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central'));
+      const defaultId = userBranchIdStr || (centralBranch ? centralBranch._id : (sorted[0] ? sorted[0]._id : ''));
+      console.log('[TransferPage] Default fromBranchId:', defaultId, 'userBranchId:', userBranchIdStr, 'centralBranch:', centralBranch?.name);
 
       setFromBranchId(defaultId);
 
       const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
-      setStaffList(stRes.data.data);
+      setStaffList(stRes.data.data || []);
 
       const prRes = await api.get('/products', { params: { limit: 100, status: 'available' } });
-      setProducts(prRes.data.data);
+      setProducts(prRes.data.data || []);
     } catch (err) {
-      console.error(err);
+      console.error('[TransferPage] Error fetching form metadata:', err);
     }
   };
 
@@ -337,7 +340,7 @@ export const TransferPage: React.FC = () => {
                 <option value="">Select source branch</option>
                 {branches.map(b => (
                   <option key={b._id} value={b._id}>
-                    {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') ? `${b.name} (Central Office)` : b.name}
+                    {b.code === 'PRN' ? `★ ${b.name}` : b.name}
                   </option>
                 ))}
               </select>
@@ -352,7 +355,7 @@ export const TransferPage: React.FC = () => {
                 <option value="">Select destination branch</option>
                 {branches.map(b => (
                   <option key={b._id} value={b._id}>
-                    {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') ? `${b.name} (Central Office)` : b.name}
+                    {b.code === 'PRN' ? `★ ${b.name}` : b.name}
                   </option>
                 ))}
               </select>
