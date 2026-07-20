@@ -470,6 +470,7 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   // Complete Transfer Update
   transfer.status = isPerfectMatch ? 'received' : 'arrived'; // arrived = partial receipt
   transfer.receivedAt = new Date();
+  transfer.arrivedAt = new Date();
   transfer.receivedBy = req.user._id;
   await transfer.save();
 
@@ -659,6 +660,7 @@ export const confirmArrivalByStaff = asyncHandler(async (req, res) => {
   // Update status
   transfer.status = 'received';
   transfer.arrivedAt = new Date();
+  transfer.receivedAt = new Date();
   transfer.receivedBy = req.user._id;
   await transfer.save();
 

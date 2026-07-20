@@ -182,7 +182,17 @@ export const BranchReceivingPage: React.FC = () => {
                     <div key={t._id} className="p-2.5 bg-slate-950/20 border border-slate-850 rounded border-l-2 border-l-emerald-500 flex items-center justify-between text-[11px]">
                       <div>
                         <p className="font-bold text-slate-300">{t.transferId}</p>
-                        <p className="text-slate-500 mt-0.5">{new Date(t.arrivedAt).toLocaleString('en-IN')}</p>
+                        <p className="text-slate-400 text-[10px] mt-0.5">
+                          From: <span className="text-slate-300 font-semibold">{t.fromBranchId?.name || 'Central Head Office'}</span>
+                        </p>
+                        <p className="text-slate-500 mt-0.5 font-mono text-[10px]">
+                          {(t.arrivedAt || t.receivedAt || t.updatedAt) 
+                            ? new Date(t.arrivedAt || t.receivedAt || t.updatedAt).toLocaleString('en-IN', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short'
+                              }) 
+                            : 'N/A'}
+                        </p>
                       </div>
                       <Badge variant="success" className="text-[8px]">Received</Badge>
                     </div>
