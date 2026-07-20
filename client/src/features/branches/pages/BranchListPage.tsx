@@ -160,7 +160,20 @@ export const BranchListPage: React.FC = () => {
 
   const columns: Column<Branch>[] = [
     { header: 'Code', accessorKey: 'code' },
-    { header: 'Branch Name', accessorKey: 'name' },
+    {
+      header: 'Branch Name',
+      accessorKey: 'name',
+      render: (item) => (
+        <div className="flex items-center space-x-2">
+          <span className="font-bold text-slate-200">{item.name}</span>
+          {(item.code === 'PRN' || item.name.toLowerCase().includes('central') || item.name.toLowerCase().includes('purnea')) && (
+            <Badge variant="outline" className="text-[10px] bg-indigo-950/60 text-indigo-300 border-indigo-700/60">
+              Central Office
+            </Badge>
+          )}
+        </div>
+      )
+    },
     { header: 'City', accessorKey: 'address.city', render: (item) => item.address?.city },
     { header: 'Contact Person', accessorKey: 'contactPerson' },
     {

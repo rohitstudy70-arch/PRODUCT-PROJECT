@@ -52,7 +52,7 @@ const seed = async () => {
     // 2. Seed Branches
     const purneaBranch = await Branch.create({
       organizationId: org._id,
-      name: 'Purnea Branch',
+      name: 'Central Branch (Purnea)',
       code: 'PRN',
       email: 'purnea@arshi.com',
       phone: '+919999988000',
