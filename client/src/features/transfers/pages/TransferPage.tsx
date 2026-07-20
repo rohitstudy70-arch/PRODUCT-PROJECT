@@ -119,7 +119,7 @@ export const TransferPage: React.FC = () => {
 
   const fetchStaffAndProducts = async () => {
     try {
-      const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
+      const stRes = await api.get('/staff', { params: { limit: 100 } });
       setStaffList(stRes.data?.data || []);
 
       const prRes = await api.get('/products', { params: { limit: 100, status: 'available' } });
@@ -376,7 +376,9 @@ export const TransferPage: React.FC = () => {
                   <option value="">Select source branch</option>
                   {branches.map(b => (
                     <option key={b._id} value={b._id}>
-                      {b.code === 'PRN' ? `★ ${b.name}` : b.name}
+                      {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central')
+                        ? `★ ${b.name} (Central Office / Main Branch)`
+                        : b.name}
                     </option>
                   ))}
                 </select>
@@ -392,7 +394,9 @@ export const TransferPage: React.FC = () => {
                 <option value="">Select destination branch</option>
                 {branches.map(b => (
                   <option key={b._id} value={b._id}>
-                    {b.code === 'PRN' ? `★ ${b.name}` : b.name}
+                    {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central')
+                      ? `★ ${b.name} (Central Office / Main Branch)`
+                      : b.name}
                   </option>
                 ))}
               </select>
@@ -404,15 +408,20 @@ export const TransferPage: React.FC = () => {
             <select
               value={assignedStaffId}
               onChange={(e) => setAssignedStaffId(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              disabled={!fromBranchId}
+              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
             >
-              <option value="">{!fromBranchId ? 'Select Source Branch First' : 'Select Driver'}</option>
+              <option value="">Select Staff / Courier</option>
               {staffList
-                .filter(s => s.branchId && (s.branchId === fromBranchId || s.branchId._id === fromBranchId))
-                .map(s => (
-                  <option key={s._id} value={s._id}>{`${s.firstName} ${s.lastName} (${s.employeeId})`}</option>
-                ))}
+                .filter(s => s.status !== 'inactive' && s.status !== 'suspended')
+                .map(s => {
+                  const isSourceBranch = s.branchId && (s.branchId === fromBranchId || s.branchId._id === fromBranchId);
+                  const bName = s.branchId ? (typeof s.branchId === 'object' ? s.branchId.name : 'Branch Staff') : 'Central Staff';
+                  return (
+                    <option key={s._id} value={s._id}>
+                      {`${s.firstName} ${s.lastName} (${s.employeeId}) - ${isSourceBranch ? '★ ' + bName : bName}`}
+                    </option>
+                  );
+                })}
             </select>
           </div>
 
