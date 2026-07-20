@@ -172,24 +172,49 @@ export const TransferPage: React.FC = () => {
       return;
     }
 
-    const matchedProduct = products.find(p => 
-      (p.currentBranchId && (p.currentBranchId === fromBranchId || p.currentBranchId._id === fromBranchId)) &&
-      (p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode) &&
-      p.status === 'available'
-    );
+    const selectedBranch = branches.find(b => b._id === fromBranchId);
+    const isCentralSource = fromBranchId === 'CENTRAL' ||
+      selectedBranch?.code === 'PRN' ||
+      selectedBranch?.name.toLowerCase().includes('purnea') ||
+      selectedBranch?.name.toLowerCase().includes('central');
+
+    const matchedProduct = products.find(p => {
+      const isAvailable = !p.status || p.status === 'available';
+      const matchesCode = p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p._id === scannedCode;
+      
+      if (!isAvailable || !matchesCode) return false;
+
+      // If source branch is Central Office / Purnea, match products at Central Office or Purnea or unassigned
+      if (isCentralSource) {
+        if (!p.currentBranchId) return true;
+        const pBranchId = typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId;
+        const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
+        const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
+        
+        if (pBranchId === fromBranchId || pBranchCode === 'PRN' || pBranchName.toLowerCase().includes('purnea') || pBranchName.toLowerCase().includes('central')) {
+          return true;
+        }
+        // Allow central office to transfer any available device
+        return true;
+      }
+
+      // Normal branch matching
+      const pBranchId = p.currentBranchId ? (typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId) : '';
+      return pBranchId === fromBranchId;
+    });
 
     if (!matchedProduct) {
-      toast.error('Product not found, already assigned, or not available in source branch.');
+      toast.error('Product not found, already assigned, or not available for transfer.');
       return;
     }
 
     if (selectedProductIds.includes(matchedProduct._id)) {
-      toast.warning('Product already added');
+      toast.warning('Product already added to transfer manifest');
       return;
     }
 
     setSelectedProductIds(prev => [...prev, matchedProduct._id]);
-    toast.success(`Added product: ${matchedProduct.productId}`);
+    toast.success(`Added product: ${matchedProduct.name} (${matchedProduct.productId})`);
     setScanInput('');
     setShowCameraInModal(false);
   };
@@ -441,12 +466,42 @@ export const TransferPage: React.FC = () => {
               >
                 <option value="">Select product to add...</option>
                 {products
-                  .filter(p => p.currentBranchId && (p.currentBranchId === fromBranchId || p.currentBranchId._id === fromBranchId) && p.status === 'available')
-                  .map(p => (
-                    <option key={p._id} value={p.productId}>
-                      {`${p.name} (${p.productId} | SN: ${p.serialNumber || 'N/A'})`}
-                    </option>
-                  ))
+                  .filter(p => {
+                    if (p.status && p.status !== 'available') return false;
+                    const selectedBranch = branches.find(b => b._id === fromBranchId);
+                    const isCentralSource = fromBranchId === 'CENTRAL' ||
+                      selectedBranch?.code === 'PRN' ||
+                      selectedBranch?.name.toLowerCase().includes('purnea') ||
+                      selectedBranch?.name.toLowerCase().includes('central');
+
+                    if (!p.currentBranchId && isCentralSource) return true;
+                    if (!p.currentBranchId) return isCentralSource;
+
+                    const pBranchId = typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId;
+                    if (pBranchId === fromBranchId) return true;
+
+                    if (isCentralSource) {
+                      const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
+                      const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
+                      if (pBranchCode === 'PRN' || pBranchName.toLowerCase().includes('purnea') || pBranchName.toLowerCase().includes('central')) {
+                        return true;
+                      }
+                      // Show all available devices when Central Office is selected
+                      return true;
+                    }
+
+                    return false;
+                  })
+                  .map(p => {
+                    const locName = p.currentBranchId
+                      ? (typeof p.currentBranchId === 'object' ? p.currentBranchId.name : 'Branch')
+                      : 'Central Main Stock';
+                    return (
+                      <option key={p._id} value={p.productId}>
+                        {`${p.name} (${p.productId} | SN: ${p.serialNumber || 'N/A'}) - [${locName}]`}
+                      </option>
+                    );
+                  })
                 }
               </select>
             </div>
