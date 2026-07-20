@@ -109,10 +109,10 @@ export const TransferPage: React.FC = () => {
   }, [createModalOpen]);
 
   const handleOpenCreateModal = () => {
-    const branchIdStr = user?.branchId 
+    const defaultBranchId = user?.branchId 
       ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
-      : '';
-    setFromBranchId(user?.role !== 'super_admin' ? branchIdStr : '');
+      : (branches.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'))?._id || '');
+    setFromBranchId(defaultBranchId);
     setToBranchId('');
     setAssignedStaffId('');
     setSelectedProductIds([]);
@@ -313,12 +313,13 @@ export const TransferPage: React.FC = () => {
               <select
                 value={fromBranchId}
                 onChange={(e) => setFromBranchId(e.target.value)}
-                disabled={user?.role !== 'super_admin'}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
               >
-                <option value="">Select source</option>
+                <option value="">Select source branch</option>
                 {branches.map(b => (
-                  <option key={b._id} value={b._id}>{b.name}</option>
+                  <option key={b._id} value={b._id}>
+                    {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') ? `${b.name} (Central Office)` : b.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -327,11 +328,13 @@ export const TransferPage: React.FC = () => {
               <select
                 value={toBranchId}
                 onChange={(e) => setToBranchId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
               >
-                <option value="">Select destination</option>
+                <option value="">Select destination branch</option>
                 {branches.map(b => (
-                  <option key={b._id} value={b._id}>{b.name}</option>
+                  <option key={b._id} value={b._id}>
+                    {b.code === 'PRN' || b.name.toLowerCase().includes('purnea') ? `${b.name} (Central Office)` : b.name}
+                  </option>
                 ))}
               </select>
             </div>
