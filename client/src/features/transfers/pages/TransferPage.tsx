@@ -86,7 +86,25 @@ export const TransferPage: React.FC = () => {
   const fetchFormMetadata = async () => {
     try {
       const brRes = await api.get('/branches', { params: { limit: 100 } });
-      setBranches(brRes.data.data);
+      const branchList: any[] = brRes.data.data || [];
+      
+      // Sort Purnea (Central Office) to top
+      const sorted = [...branchList].sort((a, b) => {
+        const isAPurnea = a.code === 'PRN' || a.name.toLowerCase().includes('purnea');
+        const isBPurnea = b.code === 'PRN' || b.name.toLowerCase().includes('purnea');
+        if (isAPurnea) return -1;
+        if (isBPurnea) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setBranches(sorted);
+
+      const userBranchIdStr = user?.branchId 
+        ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
+        : '';
+      const purneaBranch = sorted.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'));
+      const defaultId = userBranchIdStr || (purneaBranch ? purneaBranch._id : (sorted[0] ? sorted[0]._id : ''));
+
+      setFromBranchId(defaultId);
 
       const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
       setStaffList(stRes.data.data);
@@ -109,9 +127,10 @@ export const TransferPage: React.FC = () => {
   }, [createModalOpen]);
 
   const handleOpenCreateModal = () => {
+    const purneaBranch = branches.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'));
     const defaultBranchId = user?.branchId 
       ? (typeof user.branchId === 'object' ? user.branchId._id : user.branchId)
-      : (branches.find(b => b.code === 'PRN' || b.name.toLowerCase().includes('purnea'))?._id || '');
+      : (purneaBranch ? purneaBranch._id : (branches[0] ? branches[0]._id : ''));
     setFromBranchId(defaultBranchId);
     setToBranchId('');
     setAssignedStaffId('');
