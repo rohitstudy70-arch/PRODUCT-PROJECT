@@ -186,23 +186,55 @@ export const getProductById = asyncHandler(async (req, res) => {
 });
 
 export const updateProduct = asyncHandler(async (req, res) => {
-  const { name, model, batch, vendor, purchaseDate, warranty, notes } = req.body;
+  const { 
+    name, 
+    category, 
+    categoryId, 
+    serialNumber, 
+    imei, 
+    model, 
+    batch, 
+    vendor, 
+    status, 
+    condition, 
+    purchasePrice, 
+    purchaseDate, 
+    warranty, 
+    currentBranchId, 
+    notes 
+  } = req.body;
 
   const product = await Product.findById(req.params.id);
   if (!product) {
     throw new ApiError(404, 'Product not found');
   }
 
-  if (name) product.name = name;
-  if (model) product.model = model;
-  if (batch) product.batch = batch;
-  if (vendor) product.vendor = vendor;
-  if (purchaseDate) product.purchaseDate = purchaseDate;
-  if (warranty) product.warranty = warranty;
-  if (notes) product.notes = notes;
+  // Access check for branch admins
+  if (req.user.role !== 'super_admin' && req.user.branchId && !product.currentBranchId?.equals(req.user.branchId)) {
+    throw new ApiError(403, 'Access denied: You can only edit products belonging to your branch');
+  }
+
+  if (name !== undefined) product.name = name;
+  if (category || categoryId) product.category = categoryId || category;
+  if (serialNumber !== undefined) product.serialNumber = serialNumber;
+  if (imei !== undefined) product.imei = imei;
+  if (model !== undefined) product.model = model;
+  if (batch !== undefined) product.batch = batch;
+  if (vendor !== undefined) product.vendor = vendor;
+  if (status !== undefined) product.status = status;
+  if (condition !== undefined) product.condition = condition;
+  if (purchasePrice !== undefined) product.purchasePrice = purchasePrice;
+  if (purchaseDate !== undefined) product.purchaseDate = purchaseDate;
+  if (warranty !== undefined) product.warranty = warranty;
+  if (currentBranchId !== undefined && req.user.role === 'super_admin') product.currentBranchId = currentBranchId;
+  if (notes !== undefined) product.notes = notes;
 
   await product.save();
-  res.status(200).json(new ApiResponse(200, 'Product updated successfully', product));
+  const updatedProduct = await Product.findById(product._id)
+    .populate('category', 'name code prefix')
+    .populate('currentBranchId', 'name code');
+
+  res.status(200).json(new ApiResponse(200, 'Product updated successfully', updatedProduct));
 });
 
 export const deleteProduct = asyncHandler(async (req, res) => {

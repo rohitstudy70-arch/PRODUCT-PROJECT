@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode, Download } from 'lucide-react';
+import { Plus, Trash, QrCode, Download, Edit } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Product {
@@ -23,6 +23,10 @@ interface Product {
   serialNumber: string;
   imei: string;
   model: string;
+  batch?: string;
+  vendor?: string;
+  notes?: string;
+  condition?: string;
   status: string;
   qrCode?: string;
   currentBranchId?: {
@@ -52,6 +56,8 @@ export const ProductListPage: React.FC = () => {
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -64,6 +70,8 @@ export const ProductListPage: React.FC = () => {
   const [model, setModel] = useState('');
   const [batch, setBatch] = useState('');
   const [vendor, setVendor] = useState('');
+  const [status, setStatus] = useState('available');
+  const [condition, setCondition] = useState('good');
   const [currentBranchId, setCurrentBranchId] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -96,6 +104,7 @@ export const ProductListPage: React.FC = () => {
   }, [page, search]);
 
   const handleOpenCreateModal = () => {
+    setEditingProductId(null);
     setName('');
     setCategoryId(categories[0]?._id || '');
     setSerialNumber('');
@@ -103,9 +112,63 @@ export const ProductListPage: React.FC = () => {
     setModel('');
     setBatch('');
     setVendor('');
+    setStatus('available');
+    setCondition('good');
     setCurrentBranchId(branches[0]?._id || '');
     setNotes('');
     setModalOpen(true);
+  };
+
+  const handleOpenEditModal = (product: any) => {
+    setEditingProductId(product._id);
+    setName(product.name || '');
+    setCategoryId(product.category?._id || product.category || categories[0]?._id || '');
+    setSerialNumber(product.serialNumber || '');
+    setImei(product.imei || '');
+    setModel(product.model || '');
+    setBatch(product.batch || '');
+    setVendor(product.vendor || '');
+    setStatus(product.status || 'available');
+    setCondition(product.condition || 'good');
+    setCurrentBranchId(product.currentBranchId?._id || product.currentBranchId || branches[0]?._id || '');
+    setNotes(product.notes || '');
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProductId) return;
+
+    if (!name || !categoryId) {
+      toast.error('Product name and category are required');
+      return;
+    }
+
+    try {
+      const payload: any = {
+        name,
+        categoryId,
+        serialNumber,
+        imei,
+        model,
+        batch,
+        vendor,
+        status,
+        condition,
+        notes
+      };
+
+      if (user?.role === 'super_admin' && currentBranchId) {
+        payload.currentBranchId = currentBranchId;
+      }
+
+      await api.put(`/products/${editingProductId}`, payload);
+      toast.success('Product updated successfully');
+      setEditModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update product');
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -257,11 +320,16 @@ export const ProductListPage: React.FC = () => {
       header: 'Actions',
       accessorKey: 'actions',
       render: (item) => (
-        user?.role === 'super_admin' ? (
+        (user?.role === 'super_admin' || user?.role === 'branch_admin') ? (
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
-              <Trash className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => handleOpenEditModal(item)} className="h-8 w-8 p-0 text-amber-400 hover:text-amber-300">
+              <Edit className="h-4 w-4" />
             </Button>
+            {user?.role === 'super_admin' && (
+              <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
+                <Trash className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ) : <span className="text-xs text-slate-500">None</span>
       )
@@ -364,6 +432,99 @@ export const ProductListPage: React.FC = () => {
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button type="submit">Complete Registration</Button>
+          </div>
+        </form>
+      </Dialog>
+
+      {/* Edit Product Modal */}
+      <Dialog isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Product Asset Details">
+        <form onSubmit={handleUpdateSave} className="space-y-4 pt-2">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">Product Name *</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product Name" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Category *</label>
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              >
+                <option value="" disabled>Select category</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              >
+                <option value="available">Available (In Stock)</option>
+                <option value="assigned">Assigned</option>
+                <option value="in_transit">In Transit</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="retired">Retired</option>
+                <option value="lost">Lost / Missing</option>
+              </select>
+            </div>
+          </div>
+
+          {user?.role === 'super_admin' && (
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Current Location (Branch)</label>
+              <select
+                value={currentBranchId}
+                onChange={(e) => setCurrentBranchId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              >
+                <option value="" disabled>Select Branch</option>
+                {branches.map((b) => (
+                  <option key={b._id} value={b._id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Serial Number</label>
+              <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="Serial Number" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">IMEI</label>
+              <Input value={imei} onChange={(e) => setImei(e.target.value)} placeholder="IMEI" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Model</label>
+              <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Batch Code</label>
+              <Input value={batch} onChange={(e) => setBatch(e.target.value)} placeholder="Batch Code" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Vendor</label>
+              <Input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="Vendor" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">Notes / Remarks</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter details..." />
+          </div>
+
+          <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
+            <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white">Update Product Details</Button>
           </div>
         </form>
       </Dialog>
