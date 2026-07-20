@@ -1,4 +1,5 @@
 import Transfer from './transfer.model.js';
+import DutySession from '../tracking/dutySession.model.js';
 import TransferItem from './transferItem.model.js';
 import Product from '../product/product.model.js';
 import ProductHistory from '../product/productHistory.model.js';
@@ -353,6 +354,33 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   transfer.dispatchedAt = new Date();
   await transfer.save();
 
+  // Start official Duty Session for Courier Staff
+  let dutySession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+  if (!dutySession) {
+    dutySession = await DutySession.create({
+      organizationId: transfer.organizationId,
+      branchId: transfer.fromBranchId,
+      staffId: staff._id,
+      startTime: new Date(),
+      status: 'ON_DUTY',
+      exitGateNumber: gateNumber || 'Gate 1'
+    });
+  }
+  staff.dutyStatus = 'ON_DUTY';
+  staff.activeDutySessionId = dutySession._id;
+  await staff.save();
+
+  // Socket broadcast for duty start
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('duty_started', {
+      staffId: staff._id,
+      dutySessionId: dutySession._id,
+      staffName: `${staff.firstName} ${staff.lastName}`,
+      branchId: transfer.fromBranchId
+    });
+  }
+
   // Update Products & Inventory status
   await Product.updateMany(
     { _id: { $in: manifestProductIds } },
@@ -473,6 +501,28 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   transfer.arrivedAt = new Date();
   transfer.receivedBy = req.user._id;
   await transfer.save();
+
+  // Close official Duty Session for Courier Staff
+  const dutySessionEntry = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+  if (dutySessionEntry) {
+    dutySessionEntry.status = 'OFF_DUTY';
+    dutySessionEntry.endTime = new Date();
+    dutySessionEntry.entryGateNumber = gateNumber || 'Gate 1';
+    await dutySessionEntry.save();
+  }
+  staff.dutyStatus = 'OFF_DUTY';
+  staff.activeDutySessionId = null;
+  await staff.save();
+
+  // Socket broadcast for duty end
+  const ioEntry = req.app.get('io');
+  if (ioEntry) {
+    ioEntry.emit('duty_ended', {
+      staffId: staff._id,
+      dutySessionId: dutySessionEntry?._id,
+      staffName: `${staff.firstName} ${staff.lastName}`
+    });
+  }
 
   // Shift inventory to destination branch
   for (const item of manifestItems) {
@@ -663,6 +713,17 @@ export const confirmArrivalByStaff = asyncHandler(async (req, res) => {
   transfer.receivedAt = new Date();
   transfer.receivedBy = req.user._id;
   await transfer.save();
+
+  // Close official Duty Session for Courier Staff
+  const dutySessionConfirm = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+  if (dutySessionConfirm) {
+    dutySessionConfirm.status = 'OFF_DUTY';
+    dutySessionConfirm.endTime = new Date();
+    await dutySessionConfirm.save();
+  }
+  staff.dutyStatus = 'OFF_DUTY';
+  staff.activeDutySessionId = null;
+  await staff.save();
 
   // Find manifest items
   const manifestItems = await TransferItem.find({ transferId: transfer._id });

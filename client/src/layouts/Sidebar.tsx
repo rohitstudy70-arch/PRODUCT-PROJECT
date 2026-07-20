@@ -13,6 +13,8 @@ import {
   ArrowRightLeft,
   ShieldCheck,
   ScrollText,
+  MapPin,
+  FileSpreadsheet,
   LogOut,
   ChevronLeft,
   ChevronRight
@@ -82,6 +84,18 @@ export const Sidebar: React.FC = () => {
       path: ROUTES.AUDIT,
       icon: ScrollText,
       roles: ['super_admin']
+    },
+    {
+      label: 'Live Staff Tracking',
+      path: ROUTES.TRACKING,
+      icon: MapPin,
+      roles: ['super_admin', 'branch_admin']
+    },
+    {
+      label: 'Duty Reports',
+      path: ROUTES.TRACKING_REPORTS,
+      icon: FileSpreadsheet,
+      roles: ['super_admin', 'branch_admin']
     }
   ];
 

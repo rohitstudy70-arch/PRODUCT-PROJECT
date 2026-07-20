@@ -16,6 +16,8 @@ import TransferPage from './features/transfers/pages/TransferPage';
 import SecurityGatePage from './features/security/pages/SecurityGatePage';
 import { BranchReceivingPage } from './features/transfers/pages/BranchReceivingPage';
 import AuditLogPage from './features/audit/pages/AuditLogPage';
+import LiveTrackingPage from './features/tracking/pages/LiveTrackingPage';
+import TrackingReportsPage from './features/tracking/pages/TrackingReportsPage';
 
 export const App: React.FC = () => {
   return (
@@ -37,6 +39,12 @@ export const App: React.FC = () => {
               <Route path={ROUTES.BRANCHES} element={<BranchListPage />} />
               <Route path={ROUTES.STAFF} element={<StaffListPage />} />
               <Route path={ROUTES.AUDIT} element={<AuditLogPage />} />
+            </Route>
+
+            {/* Live GPS Tracking & Reports */}
+            <Route element={<ProtectedRoute allowedRoles={['super_admin', 'branch_admin']} />}>
+              <Route path={ROUTES.TRACKING} element={<LiveTrackingPage />} />
+              <Route path={ROUTES.TRACKING_REPORTS} element={<TrackingReportsPage />} />
             </Route>
 
             {/* General Logged in Access (internally scoped checks) */}

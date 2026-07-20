@@ -55,6 +55,15 @@ const staffSchema = new mongoose.Schema(
       enum: ['active', 'inactive', 'suspended'],
       default: 'active'
     },
+    dutyStatus: {
+      type: String,
+      enum: ['OFF_DUTY', 'ON_DUTY'],
+      default: 'OFF_DUTY'
+    },
+    activeDutySessionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DutySession'
+    },
     lastLogin: Date,
     resetPasswordToken: String,
     resetPasswordExpires: Date,

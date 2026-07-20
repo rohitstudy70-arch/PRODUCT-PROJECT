@@ -5,9 +5,10 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ROUTES } from '../config/routes';
 import { useUIStore } from '../store/uiStore';
+import gpsTracker from '../services/GPSLocationService';
 
 export const DashboardLayout: React.FC = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
 
@@ -16,6 +17,19 @@ export const DashboardLayout: React.FC = () => {
       navigate(ROUTES.LOGIN, { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Automated Duty Location Tracking Hook
+  useEffect(() => {
+    if (isAuthenticated && user?.dutyStatus === 'ON_DUTY') {
+      gpsTracker.startTracking();
+    } else {
+      gpsTracker.stopTracking();
+    }
+
+    return () => {
+      gpsTracker.stopTracking();
+    };
+  }, [isAuthenticated, user?.dutyStatus]);
 
   // Handle closing sidebar by default on mobile load
   useEffect(() => {

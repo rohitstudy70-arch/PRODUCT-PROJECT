@@ -14,6 +14,7 @@ export interface User {
     code: string;
   };
   qrCode?: string;
+  dutyStatus?: string;
   status: string;
 }
 
