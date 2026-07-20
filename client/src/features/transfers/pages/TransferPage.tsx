@@ -318,7 +318,23 @@ export const TransferPage: React.FC = () => {
     { header: 'From Branch', accessorKey: 'fromBranchId.name', render: (item) => item.fromBranchId?.name },
     { header: 'To Branch', accessorKey: 'toBranchId.name', render: (item) => item.toBranchId?.name },
     { header: 'Assigned Driver', accessorKey: 'assignedStaffId', render: (item) => item.assignedStaffId ? `${item.assignedStaffId.firstName} ${item.assignedStaffId.lastName}` : 'Unassigned' },
-    { header: 'Items Count', accessorKey: 'totalItems' },
+    { header: 'Items', accessorKey: 'totalItems' },
+    {
+      header: 'Received Date & Time',
+      accessorKey: 'receivedAt',
+      render: (item) => {
+        const dateVal = item.receivedAt || item.arrivedAt || (item.status === 'received' ? (item as any).updatedAt : null);
+        return dateVal ? (
+          <span className="font-mono text-emerald-400 text-xs font-semibold">
+            {new Date(dateVal).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-500 italic">
+            {item.status === 'in_transit' ? 'In Transit' : 'Pending'}
+          </span>
+        );
+      }
+    },
     {
       header: 'Logistics Status',
       accessorKey: 'status',
@@ -633,19 +649,29 @@ export const TransferPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-300 bg-slate-950/60 p-2.5 rounded border border-slate-850/80">
                   <div>
                     <span className="text-slate-500 font-bold">CREATED:</span>
-                    <p className="font-mono mt-0.5">{selectedTransfer.createdAt ? new Date(selectedTransfer.createdAt).toLocaleString() : 'N/A'}</p>
+                    <p className="font-mono mt-0.5 text-slate-300">
+                      {selectedTransfer.createdAt ? new Date(selectedTransfer.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <span className="text-slate-500 font-bold">APPROVED:</span>
-                    <p className="font-mono mt-0.5">{selectedTransfer.approvedAt ? new Date(selectedTransfer.approvedAt as string).toLocaleString() : 'N/A'}</p>
+                    <p className="font-mono mt-0.5 text-slate-300">
+                      {selectedTransfer.approvedAt ? new Date(selectedTransfer.approvedAt as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Pending'}
+                    </p>
                   </div>
                   <div className="mt-1">
                     <span className="text-slate-500 font-bold">DISPATCHED:</span>
-                    <p className="font-mono mt-0.5">{selectedTransfer.dispatchedAt ? new Date(selectedTransfer.dispatchedAt as string).toLocaleString() : 'N/A'}</p>
+                    <p className="font-mono mt-0.5 text-slate-300">
+                      {selectedTransfer.dispatchedAt ? new Date(selectedTransfer.dispatchedAt as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'In Transit / Pending'}
+                    </p>
                   </div>
                   <div className="mt-1">
                     <span className="text-slate-500 font-bold">RECEIVED:</span>
-                    <p className="font-mono mt-0.5">{(selectedTransfer.arrivedAt || selectedTransfer.receivedAt) ? new Date((selectedTransfer.arrivedAt || selectedTransfer.receivedAt) as string).toLocaleString() : 'N/A'}</p>
+                    <p className="font-mono mt-0.5 text-emerald-400 font-semibold">
+                      {(selectedTransfer.receivedAt || selectedTransfer.arrivedAt || (selectedTransfer.status === 'received' ? (selectedTransfer as any).updatedAt : null))
+                        ? new Date((selectedTransfer.receivedAt || selectedTransfer.arrivedAt || (selectedTransfer as any).updatedAt) as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                        : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>

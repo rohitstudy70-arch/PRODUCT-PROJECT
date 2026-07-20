@@ -185,13 +185,12 @@ export const BranchReceivingPage: React.FC = () => {
                         <p className="text-slate-400 text-[10px] mt-0.5">
                           From: <span className="text-slate-300 font-semibold">{t.fromBranchId?.name || 'Central Head Office'}</span>
                         </p>
-                        <p className="text-slate-500 mt-0.5 font-mono text-[10px]">
-                          {(t.arrivedAt || t.receivedAt || t.updatedAt) 
-                            ? new Date(t.arrivedAt || t.receivedAt || t.updatedAt).toLocaleString('en-IN', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short'
-                              }) 
-                            : 'N/A'}
+                        <p className="text-emerald-400 font-medium font-mono text-[10px] mt-1 flex items-center">
+                          <span className="mr-1">📅</span>
+                          {new Date(t.receivedAt || t.arrivedAt || t.updatedAt || t.createdAt).toLocaleString('en-IN', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}
                         </p>
                       </div>
                       <Badge variant="success" className="text-[8px]">Received</Badge>
