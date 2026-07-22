@@ -6,6 +6,7 @@ import { Badge } from '../../../components/ui/badge';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
 import { Building2, ShieldCheck } from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
 
 interface Branch {
   _id: string;
@@ -18,6 +19,8 @@ export const BranchReceivingPage: React.FC = () => {
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   const [incomingTransfers, setIncomingTransfers] = useState<any[]>([]);
   const [receivedHistory, setReceivedHistory] = useState<any[]>([]);
+
+  const { user } = useAuthStore();
 
   const fetchBranchesAndTransfers = async () => {
     try {
