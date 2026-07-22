@@ -5,8 +5,8 @@ import {
   getDutySessionHistory,
   getTrackingReports
 } from './tracking.controller.js';
-import { authenticate } from '../../middlewares/auth.middleware.js';
-import { authorize } from '../../middlewares/role.middleware.js';
+import { authenticate } from '../../middleware/authenticate.js';
+import { authorize } from '../../middleware/authorize.js';
 
 const router = express.Router();
 

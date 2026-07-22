@@ -259,11 +259,11 @@ export const getTrackingReports = asyncHandler(async (req, res) => {
 
   if (startDate || endDate) {
     query.startTime = {};
-    if (startDate) query.startTime.$gte = new Date(startDate);
+    if (startDate) {
+      query.startTime.$gte = new Date(`${startDate}T00:00:00+05:30`);
+    }
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      query.startTime.$lte = end;
+      query.startTime.$lte = new Date(`${endDate}T23:59:59.999+05:30`);
     }
   }
 

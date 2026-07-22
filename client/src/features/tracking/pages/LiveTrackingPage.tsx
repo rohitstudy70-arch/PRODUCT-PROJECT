@@ -79,7 +79,7 @@ export const LiveTrackingPage: React.FC = () => {
   useEffect(() => {
     fetchActiveStaff();
 
-    const socketUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+    const socketUrl = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:5000').replace('/api/v1', '');
     const socket = io(socketUrl, {
       withCredentials: true
     });
