@@ -129,7 +129,16 @@ export const BranchReceivingPage: React.FC = () => {
                 ) : (
                   <div className="flex items-center space-x-2.5 h-10 px-3 rounded-md border border-slate-800 bg-slate-950/20 text-slate-200 font-bold text-sm">
                     <Building2 className="h-4.5 w-4.5 text-indigo-400" />
-                    <span>{user?.branchId?.name || 'Central Head Office'}</span>
+                    <span>
+                      {(() => {
+                        const assignedBranchId = user?.branchId?._id || user?.branchId;
+                        if (typeof user?.branchId === 'object' && user.branchId?.name) {
+                          return user.branchId.name;
+                        }
+                        const match = branches.find(b => b._id === assignedBranchId);
+                        return match ? match.name : 'Central Head Office';
+                      })()}
+                    </span>
                   </div>
                 )}
               </div>

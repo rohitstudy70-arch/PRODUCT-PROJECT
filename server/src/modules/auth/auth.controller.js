@@ -55,6 +55,8 @@ export const login = asyncHandler(async (req, res) => {
   staff.lastLogin = new Date();
   await staff.save();
 
+  await staff.populate('branchId');
+
   // Omit password from output
   const user = staff.toObject();
   delete user.password;
