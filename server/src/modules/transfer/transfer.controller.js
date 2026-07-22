@@ -425,6 +425,14 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Transfer status is not In Transit');
   }
 
+  // Security Check: Non-super-admins can only check in arrivals for their own branch
+  if (req.user.role !== 'super_admin') {
+    const userBranchId = req.user.branchId ? req.user.branchId.toString() : null;
+    if (userBranchId !== transfer.toBranchId.toString()) {
+      throw new ApiError(403, 'Unauthorized: You can only register gate entry check-in for transfers to your assigned branch');
+    }
+  }
+
   // Step 1: Scan & Verify Staff QR
   const staff = await Staff.findOne({ qrCode: staffQrCode });
   const isStaffValid = staff && staff._id.equals(transfer.assignedStaffId);
@@ -685,6 +693,14 @@ export const confirmArrivalByStaff = asyncHandler(async (req, res) => {
 
   if (!staffQrCode || !toBranchId) {
     throw new ApiError(400, 'Staff QR/ID and destination branch ID are required');
+  }
+
+  // Security Check: Non-super-admins can only confirm arrivals for their own branch
+  if (req.user.role !== 'super_admin') {
+    const userBranchId = req.user.branchId ? req.user.branchId.toString() : null;
+    if (userBranchId !== toBranchId.toString()) {
+      throw new ApiError(403, 'Unauthorized: You can only receive transfers for your assigned branch');
+    }
   }
 
   // Find staff member

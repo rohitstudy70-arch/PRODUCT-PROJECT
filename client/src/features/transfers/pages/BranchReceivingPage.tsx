@@ -58,6 +58,15 @@ export const BranchReceivingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (user && user.role !== 'super_admin') {
+      const assignedBranchId = user.branchId?._id || user.branchId;
+      if (assignedBranchId) {
+        setSelectedBranchId(assignedBranchId);
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
     fetchTransfersForBranch();
   }, [selectedBranchId]);
 
@@ -105,7 +114,8 @@ export const BranchReceivingPage: React.FC = () => {
                 <select
                   value={selectedBranchId}
                   onChange={(e) => setSelectedBranchId(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  disabled={user?.role !== 'super_admin'}
+                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   <option value="">Select branch...</option>
                   {branches.map(b => (
