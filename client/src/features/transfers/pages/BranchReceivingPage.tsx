@@ -23,9 +23,6 @@ export const BranchReceivingPage: React.FC = () => {
     try {
       const brRes = await api.get('/branches', { params: { limit: 100 } });
       setBranches(brRes.data.data);
-      if (brRes.data.data.length > 0 && !selectedBranchId) {
-        setSelectedBranchId(brRes.data.data[0]._id);
-      }
     } catch (err) {
       toast.error('Failed to load branches');
     }
@@ -58,13 +55,17 @@ export const BranchReceivingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user && user.role !== 'super_admin') {
-      const assignedBranchId = user.branchId?._id || user.branchId;
-      if (assignedBranchId) {
-        setSelectedBranchId(assignedBranchId);
+    if (user) {
+      if (user.role !== 'super_admin') {
+        const assignedBranchId = user.branchId?._id || user.branchId;
+        if (assignedBranchId) {
+          setSelectedBranchId(assignedBranchId);
+        }
+      } else if (branches.length > 0 && !selectedBranchId) {
+        setSelectedBranchId(branches[0]._id);
       }
     }
-  }, [user]);
+  }, [user, branches, selectedBranchId]);
 
   useEffect(() => {
     fetchTransfersForBranch();
