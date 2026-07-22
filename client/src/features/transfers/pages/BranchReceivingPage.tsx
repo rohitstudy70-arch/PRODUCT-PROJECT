@@ -106,23 +106,29 @@ export const BranchReceivingPage: React.FC = () => {
             <CardHeader className="border-b border-slate-800 pb-3">
               <CardTitle className="text-base font-bold flex items-center space-x-2">
                 <Building2 className="h-5 w-5 text-indigo-400" />
-                <span>Select Operating Branch Location</span>
+                <span>{user?.role === 'super_admin' ? 'Select Operating Branch Location' : 'Operating Branch Location'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex flex-col space-y-1">
                 <label className="text-xs font-semibold text-slate-400">Current Receiving Branch</label>
-                <select
-                  value={selectedBranchId}
-                  onChange={(e) => setSelectedBranchId(e.target.value)}
-                  disabled={user?.role !== 'super_admin'}
-                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
-                >
-                  <option value="">Select branch...</option>
-                  {branches.map(b => (
-                    <option key={b._id} value={b._id}>{b.name}</option>
-                  ))}
-                </select>
+                {user?.role === 'super_admin' ? (
+                  <select
+                    value={selectedBranchId}
+                    onChange={(e) => setSelectedBranchId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">Select branch...</option>
+                    {branches.map(b => (
+                      <option key={b._id} value={b._id}>{b.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex items-center space-x-2.5 h-10 px-3 rounded-md border border-slate-800 bg-slate-950/20 text-slate-200 font-bold text-sm">
+                    <Building2 className="h-4.5 w-4.5 text-indigo-400" />
+                    <span>{user?.branchId?.name || 'Central Head Office'}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
