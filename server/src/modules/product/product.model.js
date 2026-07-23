@@ -54,6 +54,11 @@ const productSchema = new mongoose.Schema(
       default: 'available'
     },
     qrCode: String,
+    rfidTag: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
     images: [String],
     specifications: mongoose.Schema.Types.Mixed,
     notes: String,

@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode } from 'lucide-react';
+import { Plus, Trash, QrCode, Edit } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Staff {
@@ -55,6 +55,7 @@ export const StaffListPage: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'super_admin' | 'branch_admin' | 'store_manager' | 'security_guard' | 'staff'>('staff');
   const [branchId, setBranchId] = useState('');
+  const [rfidCard, setRfidCard] = useState('');
 
   const { user } = useAuthStore();
 
@@ -90,6 +91,20 @@ export const StaffListPage: React.FC = () => {
     setPhone('');
     setRole('staff');
     setBranchId('');
+    setRfidCard('');
+    setModalOpen(true);
+  };
+
+  const handleEditStaff = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setFirstName(staff.firstName);
+    setLastName(staff.lastName);
+    setEmail(staff.email);
+    setPassword('');
+    setPhone(staff.phone || '');
+    setRole(staff.role as any);
+    setBranchId(staff.branchId?._id || '');
+    setRfidCard((staff as any).rfidCard || '');
     setModalOpen(true);
   };
 
@@ -106,10 +121,11 @@ export const StaffListPage: React.FC = () => {
         firstName,
         lastName,
         email,
-        password,
         phone,
         role,
-        branchId: branchId || null
+        branchId: branchId || null,
+        rfidCard: rfidCard || null,
+        ...(password ? { password } : {})
       };
 
       if (selectedStaff) {
@@ -203,6 +219,9 @@ export const StaffListPage: React.FC = () => {
       render: (item) => (
         user?.role === 'super_admin' ? (
           <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => handleEditStaff(item)} className="h-8 w-8 p-0 text-indigo-400 hover:text-indigo-300">
+              <Edit className="h-4 w-4" />
+            </Button>
             <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
               <Trash className="h-4 w-4" />
             </Button>
@@ -301,6 +320,11 @@ export const StaffListPage: React.FC = () => {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">RFID Card UID / Tag Number</label>
+            <Input value={rfidCard} onChange={(e) => setRfidCard(e.target.value)} placeholder="Tap RFID card on reader or type UID (e.g. 10293847)" />
           </div>
 
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">

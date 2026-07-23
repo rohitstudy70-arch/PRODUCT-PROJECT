@@ -14,7 +14,6 @@ import {
   ChevronLeft, 
   ChevronRight,
   TrendingUp,
-  MapPin,
   Clock,
   Compass
 } from 'lucide-react';

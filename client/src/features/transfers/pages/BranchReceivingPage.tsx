@@ -60,7 +60,7 @@ export const BranchReceivingPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       if (user.role !== 'super_admin') {
-        const assignedBranchId = user.branchId?._id || user.branchId;
+        const assignedBranchId = (user.branchId as any)?._id || (user.branchId as any);
         if (assignedBranchId) {
           setSelectedBranchId(assignedBranchId);
         }

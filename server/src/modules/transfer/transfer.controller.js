@@ -177,12 +177,12 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Cannot prepare dispatch. Current status is ${transfer.status}`);
   }
 
-  // Find product by QR UUID code, Serial Number, or Product ID
   const product = await Product.findOne({
     $or: [
       { qrCode: productQrCode },
       { serialNumber: productQrCode },
-      { productId: productQrCode }
+      { productId: productQrCode },
+      { rfidTag: productQrCode }
     ]
   });
 
@@ -255,7 +255,9 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   }
 
   // Step 1: Scan & Verify Staff QR
-  const staff = await Staff.findOne({ qrCode: staffQrCode });
+  const staff = await Staff.findOne({
+    $or: [{ qrCode: staffQrCode }, { rfidCard: staffQrCode }, { employeeId: staffQrCode }]
+  });
   const isStaffValid = staff && staff._id.equals(transfer.assignedStaffId);
 
   if (!isStaffValid) {
@@ -293,7 +295,8 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
     $or: [
       { qrCode: { $in: scannedProductQrs } },
       { serialNumber: { $in: scannedProductQrs } },
-      { productId: { $in: scannedProductQrs } }
+      { productId: { $in: scannedProductQrs } },
+      { rfidTag: { $in: scannedProductQrs } }
     ]
   });
 
@@ -434,7 +437,9 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   }
 
   // Step 1: Scan & Verify Staff QR
-  const staff = await Staff.findOne({ qrCode: staffQrCode });
+  const staff = await Staff.findOne({
+    $or: [{ qrCode: staffQrCode }, { rfidCard: staffQrCode }, { employeeId: staffQrCode }]
+  });
   const isStaffValid = staff && staff._id.equals(transfer.assignedStaffId);
 
   if (!isStaffValid) {
@@ -460,7 +465,8 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
     $or: [
       { qrCode: { $in: scannedProductQrs } },
       { serialNumber: { $in: scannedProductQrs } },
-      { productId: { $in: scannedProductQrs } }
+      { productId: { $in: scannedProductQrs } },
+      { rfidTag: { $in: scannedProductQrs } }
     ]
   });
 
@@ -643,11 +649,11 @@ export const getActiveTransferByStaff = asyncHandler(async (req, res) => {
 
   // Find staff member
   const staff = await Staff.findOne({
-    $or: [{ qrCode: staffQrCode }, { employeeId: staffQrCode }]
+    $or: [{ qrCode: staffQrCode }, { employeeId: staffQrCode }, { rfidCard: staffQrCode }]
   });
 
   if (!staff) {
-    throw new ApiError(404, 'Staff member not registered or QR card invalid');
+    throw new ApiError(404, 'Staff member not registered or QR/RFID card invalid');
   }
 
   // Construct query based on flow type
@@ -705,7 +711,7 @@ export const confirmArrivalByStaff = asyncHandler(async (req, res) => {
 
   // Find staff member
   const staff = await Staff.findOne({
-    $or: [{ qrCode: staffQrCode }, { employeeId: staffQrCode }]
+    $or: [{ qrCode: staffQrCode }, { employeeId: staffQrCode }, { rfidCard: staffQrCode }]
   });
 
   if (!staff) {

@@ -74,6 +74,7 @@ export const ProductListPage: React.FC = () => {
   const [condition, setCondition] = useState('good');
   const [currentBranchId, setCurrentBranchId] = useState('');
   const [notes, setNotes] = useState('');
+  const [rfidTag, setRfidTag] = useState('');
 
   const { user } = useAuthStore();
 
@@ -116,6 +117,7 @@ export const ProductListPage: React.FC = () => {
     setCondition('good');
     setCurrentBranchId(branches[0]?._id || '');
     setNotes('');
+    setRfidTag('');
     setModalOpen(true);
   };
 
@@ -132,6 +134,7 @@ export const ProductListPage: React.FC = () => {
     setCondition(product.condition || 'good');
     setCurrentBranchId(product.currentBranchId?._id || product.currentBranchId || branches[0]?._id || '');
     setNotes(product.notes || '');
+    setRfidTag(product.rfidTag || '');
     setEditModalOpen(true);
   };
 
@@ -155,7 +158,8 @@ export const ProductListPage: React.FC = () => {
         vendor,
         status,
         condition,
-        notes
+        notes,
+        rfidTag: rfidTag || null
       };
 
       if (user?.role === 'super_admin' && currentBranchId) {
@@ -189,7 +193,8 @@ export const ProductListPage: React.FC = () => {
         batch,
         vendor,
         currentBranchId,
-        notes
+        notes,
+        rfidTag: rfidTag || null
       };
 
       await api.post('/products', payload);
@@ -429,6 +434,11 @@ export const ProductListPage: React.FC = () => {
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter details..." />
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">RFID Tag Number</label>
+            <Input value={rfidTag} onChange={(e) => setRfidTag(e.target.value)} placeholder="Tap RFID tag on reader or enter Tag UID" />
+          </div>
+
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button type="submit">Complete Registration</Button>
@@ -520,6 +530,11 @@ export const ProductListPage: React.FC = () => {
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400">Notes / Remarks</label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter details..." />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">RFID Tag Number</label>
+            <Input value={rfidTag} onChange={(e) => setRfidTag(e.target.value)} placeholder="Tap RFID tag on reader or enter Tag UID" />
           </div>
 
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">

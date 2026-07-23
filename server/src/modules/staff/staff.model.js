@@ -50,6 +50,11 @@ const staffSchema = new mongoose.Schema(
     qrCode: {
       type: String // UUID linking to qr_codes
     },
+    rfidCard: {
+      type: String,
+      unique: true,
+      sparse: true
+    },
     status: {
       type: String,
       enum: ['active', 'inactive', 'suspended'],
