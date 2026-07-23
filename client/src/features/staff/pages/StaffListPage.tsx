@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode, Edit } from 'lucide-react';
+import { Plus, Trash, QrCode, Edit, Printer } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Staff {
@@ -148,6 +148,10 @@ export const StaffListPage: React.FC = () => {
       const response = await api.post(`/staff/${staffId}/generate-qr`);
       const qrDoc = response.data.data;
       
+      const staffMember = staffList.find(s => s._id === staffId);
+      if (staffMember) {
+        setSelectedStaff(staffMember);
+      }
       setQrCodeData(qrDoc.code);
       setQrModalOpen(true);
       fetchData(); // Refresh list to update QR status icon
@@ -156,9 +160,111 @@ export const StaffListPage: React.FC = () => {
     }
   };
 
-  const handleOpenQRView = (code: string) => {
+  const handleOpenQRView = (staff: Staff, code: string) => {
+    setSelectedStaff(staff);
     setQrCodeData(code);
     setQrModalOpen(true);
+  };
+
+  const handlePrintQR = () => {
+    const printContent = document.getElementById('staff-qr-print-element');
+    if (!printContent) return;
+
+    const uniqueName = new Date().getTime();
+    const windowName = 'PrintWindow_' + uniqueName;
+    const printWindow = window.open('about:blank', windowName, 'left=50000,top=50000,width=0,height=0');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Staff ID Card</title>
+          <style>
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 20px;
+              color: #000;
+              background-color: #fff;
+              text-align: center;
+            }
+            .card-container {
+              border: 2px solid #333;
+              border-radius: 12px;
+              padding: 24px;
+              width: 260px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              display: inline-block;
+            }
+            .title {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 2px;
+              color: #1e3a8a;
+              letter-spacing: 0.05em;
+            }
+            .subtitle {
+              font-size: 9px;
+              color: #666;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              margin-bottom: 16px;
+              font-weight: bold;
+            }
+            .qr-wrapper {
+              margin-bottom: 16px;
+              display: flex;
+              justify-content: center;
+            }
+            .qr-wrapper svg {
+              width: 180px;
+              height: 180px;
+            }
+            .name {
+              font-size: 16px;
+              font-weight: bold;
+              margin-top: 8px;
+            }
+            .role {
+              font-size: 11px;
+              color: #4f46e5;
+              text-transform: uppercase;
+              font-weight: bold;
+              margin-top: 2px;
+              letter-spacing: 0.05em;
+            }
+            .emp-id {
+              font-size: 10px;
+              color: #888;
+              font-family: monospace;
+              margin-top: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="card-container">
+            <div class="title">ARSHI ENTERPRISE</div>
+            <div class="subtitle">Corporate Identity Card</div>
+            <div class="qr-wrapper">
+              ${printContent.innerHTML}
+            </div>
+            <div class="name">${selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName}` : 'Staff Member'}</div>
+            <div class="role">${selectedStaff ? selectedStaff.role.replace('_', ' ').toUpperCase() : ''}</div>
+            <div class="emp-id">Emp ID: ${selectedStaff ? selectedStaff.employeeId : ''}</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const handleDelete = async (id: string) => {
@@ -200,7 +306,7 @@ export const StaffListPage: React.FC = () => {
       accessorKey: 'qrCode',
       render: (item) => (
         item.qrCode ? (
-          <Button variant="ghost" size="sm" onClick={() => handleOpenQRView(item.qrCode!)} className="h-7 text-emerald-400 p-1">
+          <Button variant="ghost" size="sm" onClick={() => handleOpenQRView(item, item.qrCode!)} className="h-7 text-emerald-400 p-1">
             <QrCode className="h-4 w-4 mr-1" />
             <span className="text-xs">View</span>
           </Button>
@@ -344,7 +450,7 @@ export const StaffListPage: React.FC = () => {
           <p className="text-xs text-slate-400 text-center uppercase tracking-wider font-semibold">
             This QR code verifies user credentials at security check gates
           </p>
-          <div className="p-4 bg-white rounded-xl shadow-lg border border-slate-200">
+          <div id="staff-qr-print-element" className="p-4 bg-white rounded-xl shadow-lg border border-slate-200">
             {qrCodeData && (
               <QRCodeSVG
                 value={qrCodeData}
@@ -354,10 +460,26 @@ export const StaffListPage: React.FC = () => {
             )}
           </div>
           <div className="text-center">
-            <p className="text-sm font-bold text-slate-200">UUID Tag ID</p>
-            <p className="text-xs text-slate-500 font-mono select-all mt-1">{qrCodeData}</p>
+            {selectedStaff && (
+              <div className="mb-3">
+                <p className="text-sm font-bold text-slate-200">{selectedStaff.firstName} {selectedStaff.lastName}</p>
+                <p className="text-xs text-slate-400 font-semibold mt-0.5 uppercase tracking-wider">{selectedStaff.role.replace('_', ' ')}</p>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5">Emp ID: {selectedStaff.employeeId}</p>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Credential Token (UUID)</p>
+            <p className="text-[10px] text-slate-500 font-mono select-all mt-1">{qrCodeData}</p>
           </div>
-          <Button onClick={() => setQrModalOpen(false)} className="w-full mt-4">Close Card</Button>
+          
+          <div className="flex w-full space-x-2 mt-4">
+            <Button onClick={handlePrintQR} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center space-x-1.5 cursor-pointer">
+              <Printer className="h-4 w-4" />
+              <span>Print ID Card</span>
+            </Button>
+            <Button variant="outline" onClick={() => setQrModalOpen(false)} className="flex-1">
+              Close
+            </Button>
+          </div>
         </div>
       </Dialog>
     </div>
