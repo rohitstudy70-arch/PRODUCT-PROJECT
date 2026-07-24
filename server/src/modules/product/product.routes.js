@@ -34,7 +34,7 @@ router.post('/', authorize('super_admin', 'branch_admin', 'store_manager'), audi
 router.put('/:id', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('product', 'update'), updateProduct);
 router.delete('/:id', authorize('super_admin', 'branch_admin'), auditTrail('product', 'delete'), deleteProduct);
 
-// QR Code generation is restricted to SUPER_ADMIN (Organization Head Office)
-router.post('/:id/generate-qr', authorize('super_admin'), auditTrail('product', 'generate_qr'), generateProductQR);
+// QR Code generation is allowed for super_admin, branch_admin, store_manager
+router.post('/:id/generate-qr', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('product', 'generate_qr'), generateProductQR);
 
 export default router;

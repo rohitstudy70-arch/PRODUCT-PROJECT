@@ -12,7 +12,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
   // Branch isolation
   if (req.user.role !== 'super_admin' && req.user.branchId) {
-    query.currentBranchId = req.user.branchId;
+    query.$or = [
+      { currentBranchId: req.user.branchId },
+      { currentBranchId: null },
+      { currentBranchId: { $exists: false } }
+    ];
     transferQuery.$or = [
       { fromBranchId: req.user.branchId },
       { toBranchId: req.user.branchId }

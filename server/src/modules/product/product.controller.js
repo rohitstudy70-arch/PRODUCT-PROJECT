@@ -263,11 +263,6 @@ export const generateProductQR = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Product not found');
   }
 
-  // CORE RULE: Only the Organization (super_admin) can generate QR codes.
-  if (req.user.role !== 'super_admin') {
-    throw new ApiError(403, 'CORE RULE: Only the main organization can generate QR Codes');
-  }
-
   const qrCodeUUID = crypto.randomUUID();
   const branchName = product.currentBranchId ? product.currentBranchId.name : 'Main Organization';
 
