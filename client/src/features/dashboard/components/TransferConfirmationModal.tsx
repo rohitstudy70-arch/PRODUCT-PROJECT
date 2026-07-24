@@ -93,14 +93,40 @@ export const TransferConfirmationModal: React.FC<TransferConfirmationModalProps>
             <p className="text-[10px] text-slate-400 font-mono">ID: {product.productId}</p>
           </div>
 
-          <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-850 space-y-1">
-            <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center">
-              <Truck className="h-3 w-3 mr-1 text-slate-400" />
-              Assigned Courier
+          <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-850 space-y-1 col-span-2">
+            <p className="text-[10px] font-bold text-emerald-400 uppercase flex items-center">
+              <Truck className="h-3 w-3 mr-1 text-emerald-400" />
+              Assigned Courier Boy Verification Details
             </p>
-            <p className="font-bold text-slate-200">{`${courier.firstName} ${courier.lastName}`}</p>
-            <p className="text-[10px] text-slate-400 font-mono">Emp ID: {courier.employeeId}</p>
-            <p className="text-[10px] text-slate-400 font-mono">Phone: {courier.phone || 'N/A'}</p>
+            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+              <div>
+                <span className="text-[9px] text-slate-500 font-bold uppercase">Name:</span>
+                <p className="font-bold text-slate-100">{`${courier.firstName} ${courier.lastName}`}</p>
+                <p className="text-[10px] text-slate-400 font-mono">ID: {courier.employeeId}</p>
+              </div>
+
+              <div>
+                <span className="text-[9px] text-amber-400 font-bold uppercase">Father's Name (S/O):</span>
+                <p className="font-bold text-amber-300">{courier.fatherName ? `S/O ${courier.fatherName}` : 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-[9px] text-indigo-400 font-bold uppercase">Mobile Number:</span>
+                <p className="font-mono font-bold text-indigo-300">{courier.phone || 'N/A'}</p>
+              </div>
+
+              <div>
+                <span className="text-[9px] text-emerald-400 font-bold uppercase">Aadhar Number:</span>
+                <p className="font-mono font-bold text-emerald-300">{courier.aadharNumber || 'N/A'}</p>
+              </div>
+
+              <div className="col-span-2 text-[10px] text-slate-300 pt-1 border-t border-slate-850">
+                <span className="text-[9px] text-slate-500 font-bold uppercase">Address: </span>
+                {typeof courier.addressDetails === 'object'
+                  ? `${courier.addressDetails.street || ''}, ${courier.addressDetails.district || ''}, ${courier.addressDetails.state || ''}`
+                  : courier.addressDetails || 'Station Chowk'}
+              </div>
+            </div>
           </div>
 
           <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-850 space-y-1">

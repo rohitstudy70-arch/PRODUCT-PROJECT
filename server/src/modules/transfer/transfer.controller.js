@@ -6,6 +6,7 @@ import ProductHistory from '../product/productHistory.model.js';
 import Inventory from '../inventory/inventory.model.js';
 import StockMovement from '../inventory/stockMovement.model.js';
 import Staff from '../staff/staff.model.js';
+import Branch from '../branch/branch.model.js';
 import QRCode from '../qr/qrCode.model.js';
 import SecurityScan from '../security/securityScan.model.js';
 import Notification from '../notification/notification.model.js';

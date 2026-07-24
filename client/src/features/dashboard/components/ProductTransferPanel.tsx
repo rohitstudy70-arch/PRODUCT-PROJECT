@@ -400,7 +400,7 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                     <option value="">Select courier for transfer...</option>
                     {availableCouriers.map(s => (
                       <option key={s._id} value={s._id}>
-                        {`${s.firstName} ${s.lastName} (${s.employeeId}) - ${s.designation || s.role}`}
+                        {`${s.firstName} ${s.lastName} ${s.fatherName ? `(S/O ${s.fatherName})` : ''} | Mob: ${s.phone || 'N/A'} | Aadhar: ${s.aadharNumber || 'N/A'}`}
                       </option>
                     ))}
                   </select>
@@ -408,22 +408,22 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
 
                 {/* STEP 3: AUTO STAFF VERIFICATION CARD (LOADS AUTOMATICALLY) */}
                 {selectedCourierDetails && (
-                  <div className="bg-slate-950 border border-indigo-500/40 rounded-xl p-4 space-y-3 shadow-lg shadow-indigo-950/30">
+                  <div className="bg-slate-950 border border-emerald-500/40 rounded-xl p-4 space-y-3 shadow-xl shadow-emerald-950/20">
                     <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                       <div className="flex items-center space-x-2">
                         <UserCheck className="h-4 w-4 text-emerald-400" />
                         <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                          Auto Staff Verification Card
+                          Auto Courier Verification Profile
                         </span>
                       </div>
                       <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[9px]">
-                        Verified Active Staff
+                        ✓ Verified Delivery Courier
                       </Badge>
                     </div>
 
                     <div className="flex items-start space-x-4">
                       {/* Avatar / Photo */}
-                      <div className="h-16 w-16 rounded-xl bg-indigo-950 border border-indigo-500/30 text-indigo-400 font-bold text-xl flex items-center justify-center shrink-0 uppercase shadow-inner">
+                      <div className="h-20 w-20 rounded-xl bg-indigo-950 border border-indigo-500/30 text-indigo-400 font-bold text-2xl flex items-center justify-center shrink-0 uppercase shadow-inner">
                         {selectedCourierDetails.avatar ? (
                           <img src={selectedCourierDetails.avatar} alt="Courier" className="h-full w-full object-cover rounded-xl" />
                         ) : (
@@ -433,41 +433,47 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
 
                       {/* Info Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs flex-1">
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Employee Name</span>
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase">Courier Boy Name</span>
                           <p className="font-bold text-slate-100">{`${selectedCourierDetails.firstName} ${selectedCourierDetails.lastName}`}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">ID: {selectedCourierDetails.employeeId}</p>
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Employee ID</span>
-                          <p className="font-mono text-indigo-400 font-semibold">{selectedCourierDetails.employeeId}</p>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                          <span className="text-[9px] font-bold text-amber-400 uppercase">Father's Name (S/O)</span>
+                          <p className="font-bold text-amber-300">{selectedCourierDetails.fatherName ? `S/O ${selectedCourierDetails.fatherName}` : 'N/A'}</p>
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Father Name</span>
-                          <p className="text-slate-300">{selectedCourierDetails.fatherName || 'N/A'}</p>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                          <span className="text-[9px] font-bold text-indigo-400 uppercase">Mobile Number</span>
+                          <p className="font-mono font-bold text-indigo-300">{selectedCourierDetails.phone || 'N/A'}</p>
+                          {selectedCourierDetails.alternatePhone && (
+                            <p className="text-[9px] text-slate-400 font-mono">Alt: {selectedCourierDetails.alternatePhone}</p>
+                          )}
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Mobile Number</span>
-                          <p className="font-mono text-slate-200">{selectedCourierDetails.phone || 'N/A'}</p>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                          <span className="text-[9px] font-bold text-emerald-400 uppercase">Aadhar Number</span>
+                          <p className="font-mono font-bold text-emerald-300">{selectedCourierDetails.aadharNumber || 'N/A'}</p>
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Alternate Mobile</span>
-                          <p className="font-mono text-slate-400">{selectedCourierDetails.alternatePhone || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Designation</span>
-                          <p className="text-slate-300 font-semibold">{selectedCourierDetails.designation || 'Delivery Courier'}</p>
-                        </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Aadhar Number</span>
-                          <p className="font-mono text-slate-400">{selectedCourierDetails.aadharNumber || 'N/A'}</p>
-                        </div>
-                        <div>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
                           <span className="text-[9px] font-bold text-slate-500 uppercase">PAN Number</span>
-                          <p className="font-mono text-slate-400">{selectedCourierDetails.panNumber || 'N/A'}</p>
+                          <p className="font-mono text-slate-300">{selectedCourierDetails.panNumber || 'N/A'}</p>
                         </div>
-                        <div>
-                          <span className="text-[9px] font-bold text-slate-500 uppercase">Joining Date</span>
-                          <p className="text-slate-300">{selectedCourierDetails.joiningDate ? new Date(selectedCourierDetails.joiningDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
+                          <span className="text-[9px] font-bold text-slate-500 uppercase">Designation</span>
+                          <p className="text-slate-200 font-semibold">{selectedCourierDetails.designation || 'Delivery Staff / Courier'}</p>
+                        </div>
+
+                        <div className="col-span-2 md:col-span-3 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Complete Address Details</span>
+                          <p className="text-slate-200 font-medium text-xs mt-0.5">
+                            {typeof selectedCourierDetails.addressDetails === 'object'
+                              ? `${selectedCourierDetails.addressDetails.street || ''}, District: ${selectedCourierDetails.addressDetails.district || ''}, State: ${selectedCourierDetails.addressDetails.state || ''} - ${selectedCourierDetails.addressDetails.pincode || ''}`
+                              : selectedCourierDetails.addressDetails || 'Station Chowk, Central City'}
+                          </p>
                         </div>
                       </div>
                     </div>
