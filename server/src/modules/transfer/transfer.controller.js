@@ -852,19 +852,18 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
   const year = new Date().getFullYear();
   const transferId = await getNextSequence(`transfer_${year}`, `TRF-${year}-`, 6);
 
-  // 1. Create Transfer Record
+  // 1. Create Transfer Record (awaiting security gate scan)
   const transfer = await Transfer.create({
     organizationId: req.user.organizationId,
     transferId,
     fromBranchId: currentBranchId || destinationBranchId,
     toBranchId: destinationBranchId,
     assignedStaffId: courier._id,
-    status: 'in_transit',
-    dispatchedAt: new Date(),
+    status: 'ready_for_dispatch',
     reason,
     expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
     remarks,
-    notes: `Assigned via Dashboard IMEI Transfer. Reason: ${reason}`,
+    notes: `Assigned via Dashboard IMEI Transfer. Reason: ${reason}. Awaiting Security Gate Scan.`,
     requestedBy: req.user._id,
     approvedBy: req.user._id,
     approvedAt: new Date(),
@@ -872,34 +871,34 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
     totalItems: 1
   });
 
-  // 2. Create Transfer Item
+  // 2. Create Transfer Item (pending scan)
   await TransferItem.create({
     transferId: transfer._id,
     productId: product._id,
-    status: 'dispatched'
+    status: 'pending'
   });
 
-  // 3. Update Product status
-  product.status = 'in_transit';
+  // 3. Update Product status to assigned (not in_transit yet - security gate scan required)
+  product.status = 'assigned';
   product.currentHolderId = courier._id;
   await product.save();
 
-  // 4. Update Inventory status
+  // 4. Update Inventory status to reserved
   await Inventory.findOneAndUpdate(
     { productId: product._id },
-    { status: 'in_transit', assignedTo: courier._id, updatedBy: req.user._id }
+    { status: 'reserved', assignedTo: courier._id, updatedBy: req.user._id }
   );
 
   // 5. Create Product History timeline entry
   await ProductHistory.create({
     productId: product._id,
-    action: 'dispatched',
+    action: 'assigned',
     fromBranchId: currentBranchId,
     toBranchId: destinationBranchId,
     transferId: transfer._id,
     staffId: courier._id,
     securityGuardId: req.user._id,
-    notes: `Dashboard IMEI Transfer assigned to courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}). Reason: ${reason}. ${remarks || ''}`
+    notes: `Dashboard IMEI Transfer assigned to courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}). Awaiting Security Gate Scan for dispatch. Reason: ${reason}. ${remarks || ''}`
   });
 
   // 6. Create Audit Log
@@ -912,7 +911,7 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
     module: 'logistics',
     entityType: 'Product',
     entityId: product._id.toString(),
-    description: `Assigned Product ${product.name} (IMEI: ${product.imei || 'N/A'}, ID: ${product.productId}) to Courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}) for Destination Branch. Transfer ID: ${transferId}`,
+    description: `Assigned Product ${product.name} (IMEI: ${product.imei || 'N/A'}, ID: ${product.productId}) to Courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}) for Destination Branch. Transfer ID: ${transferId}. Status: READY FOR DISPATCH (Security Scan Pending).`,
     ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1',
     userAgent: req.headers['user-agent'] || 'Dashboard Browser Client',
     branchId: currentBranchId,
@@ -926,7 +925,7 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
     branchId: destinationBranchId,
     type: 'transfer_created',
     title: `Inbound Transfer Assigned (${transferId})`,
-    message: `Product ${product.name} (IMEI: ${product.imei || product.productId}) assigned to Courier ${courier.firstName} ${courier.lastName} destined for ${destBranch?.name || 'Destination Branch'}.`,
+    message: `Product ${product.name} (IMEI: ${product.imei || product.productId}) assigned to Courier ${courier.firstName} ${courier.lastName} destined for ${destBranch?.name || 'Destination Branch'}. Awaiting Security Gate Clearance.`,
     link: `/transfers/${transfer._id}`
   });
 
@@ -935,11 +934,20 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
     userId: courier._id,
     type: 'transfer_approved',
     title: `New Delivery Assignment (${transferId})`,
-    message: `You have been assigned to deliver product ${product.name} (IMEI: ${product.imei || product.productId}) to ${destBranch?.name || 'Destination Branch'}.`,
+    message: `You have been assigned to deliver product ${product.name} (IMEI: ${product.imei || product.productId}) to ${destBranch?.name || 'Destination Branch'}. Report to Security Gate for exit scan.`,
     link: `/transfers/${transfer._id}`
   });
 
-  await Promise.allSettled([destAdminNotification, courierNotification]);
+  // Notify security guards
+  const securityNotification = Notification.create({
+    organizationId: req.user.organizationId,
+    type: 'security_scan_required',
+    title: `Gate Scan Required (${transferId})`,
+    message: `Transfer ${transferId} is ready for gate exit verification. Courier: ${courier.firstName} ${courier.lastName}. Product: ${product.name} (${product.productId}).`,
+    link: `/security-gate`
+  });
+
+  await Promise.allSettled([destAdminNotification, courierNotification, securityNotification]);
 
   // 8. Socket Broadcast
   const io = req.app.get('io');
@@ -950,11 +958,19 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
       productName: product.name,
       imei: product.imei,
       courierName: `${courier.firstName} ${courier.lastName}`,
-      destinationBranchName: destBranch?.name
+      destinationBranchName: destBranch?.name,
+      status: 'ready_for_dispatch'
+    });
+    io.emit('security_scan_required', {
+      transferId: transfer._id,
+      code: transferId,
+      courierName: `${courier.firstName} ${courier.lastName}`,
+      productName: product.name,
+      productId: product.productId
     });
     io.emit('product_updated', {
       productId: product._id,
-      status: 'in_transit',
+      status: 'assigned',
       currentHolder: `${courier.firstName} ${courier.lastName}`
     });
   }
