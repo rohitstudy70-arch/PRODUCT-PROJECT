@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Inventory from './inventory.model.js';
 import StockMovement from './stockMovement.model.js';
 import ApiResponse from '../../utils/ApiResponse.js';
@@ -5,7 +6,7 @@ import asyncHandler from '../../utils/asyncHandler.js';
 import { generatePaginationMeta } from '../../utils/helpers.js';
 
 export const getInventory = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = '', status, branchId } = req.query;
+  const { page = 1, limit = 100, search = '', status, branchId } = req.query;
 
   const query = {};
 

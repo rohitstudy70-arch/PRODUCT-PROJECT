@@ -10,8 +10,7 @@ const inventorySchema = new mongoose.Schema(
     },
     branchId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Branch',
-      required: true
+      ref: 'Branch'
     },
     status: {
       type: String,

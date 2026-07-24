@@ -42,7 +42,7 @@ export const InventoryPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get('/inventory', {
-        params: { page, limit: 10, search }
+        params: { page, limit: 100, search }
       });
       setItems(response.data.data);
       setTotalPages(response.data.meta?.pages || 1);
@@ -81,7 +81,7 @@ export const InventoryPage: React.FC = () => {
     {
       header: 'Current Branch',
       accessorKey: 'branchId.name',
-      render: (item) => `${item.branchId?.name} (${item.branchId?.code})`
+      render: (item) => item.branchId ? `${item.branchId.name} (${item.branchId.code})` : 'Central Main Stock (PRN)'
     },
     {
       header: 'Staff Custody',
