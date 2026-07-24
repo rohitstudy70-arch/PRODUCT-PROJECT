@@ -82,7 +82,7 @@ export const ProductListPage: React.FC = () => {
     setLoading(true);
     try {
       const productResponse = await api.get('/products', {
-        params: { page, limit: 10, search }
+        params: { page, limit: 100, search }
       });
       setProducts(productResponse.data.data);
       setTotalPages(productResponse.data.meta?.pages || 1);

@@ -122,7 +122,7 @@ export const TransferPage: React.FC = () => {
       const stRes = await api.get('/staff', { params: { limit: 100 } });
       setStaffList(stRes.data?.data || []);
 
-      const prRes = await api.get('/products', { params: { limit: 100, status: 'available' } });
+      const prRes = await api.get('/products', { params: { limit: 500 } });
       setProducts(prRes.data?.data || []);
     } catch (err) {
       console.error('[TransferPage] Error fetching staff/products:', err);
