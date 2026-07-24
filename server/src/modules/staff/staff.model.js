@@ -41,6 +41,26 @@ const staffSchema = new mongoose.Schema(
       select: false
     },
     phone: String,
+    fatherName: String,
+    alternatePhone: String,
+    aadharNumber: String,
+    panNumber: String,
+    addressDetails: {
+      street: String,
+      district: String,
+      state: String,
+      pincode: String
+    },
+    joiningDate: {
+      type: Date,
+      default: Date.now
+    },
+    designation: {
+      type: String,
+      default: 'Delivery Staff / Courier'
+    },
+    bloodGroup: String,
+    emergencyContact: String,
     role: {
       type: String,
       enum: ['super_admin', 'branch_admin', 'store_manager', 'security_guard', 'staff'],

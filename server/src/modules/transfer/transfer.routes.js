@@ -8,7 +8,8 @@ import {
   gateExitVerification,
   gateEntryReceive,
   getActiveTransferByStaff,
-  confirmArrivalByStaff
+  confirmArrivalByStaff,
+  assignIMEITransfer
 } from './transfer.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
@@ -22,6 +23,9 @@ router.use(authenticate);
 router.get('/', getTransfers);
 router.get('/active-by-staff/:staffQrCode', getActiveTransferByStaff);
 router.get('/:id', getTransferById);
+
+// Direct IMEI Dashboard Product Assignment & Transfer
+router.post('/assign-imei', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'assign_imei'), assignIMEITransfer);
 
 // Super admin creates and approves transfers
 router.post('/', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'create'), createTransfer);

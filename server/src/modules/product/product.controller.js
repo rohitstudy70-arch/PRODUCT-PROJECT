@@ -311,3 +311,32 @@ export const getProductHistory = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, 'Product history retrieved successfully', history));
 });
+
+export const searchProducts = asyncHandler(async (req, res) => {
+  const q = (req.query.q || req.query.imei || req.query.query || '').trim();
+
+  if (!q) {
+    return res.status(200).json(new ApiResponse(200, 'Products search query empty', []));
+  }
+
+  const query = {
+    isDeleted: { $ne: true },
+    $or: [
+      { imei: { $regex: q, $options: 'i' } },
+      { productId: { $regex: q, $options: 'i' } },
+      { serialNumber: { $regex: q, $options: 'i' } },
+      { qrCode: { $regex: q, $options: 'i' } },
+      { name: { $regex: q, $options: 'i' } },
+      { model: { $regex: q, $options: 'i' } }
+    ]
+  };
+
+  const products = await Product.find(query)
+    .populate('category', 'name code prefix')
+    .populate('currentBranchId', 'name code email phone address contactPerson status managerName')
+    .populate('currentHolderId', 'firstName lastName employeeId email phone fatherName alternatePhone aadharNumber panNumber addressDetails joiningDate designation bloodGroup emergencyContact status qrCode avatar')
+    .sort({ updatedAt: -1 })
+    .limit(20);
+
+  res.status(200).json(new ApiResponse(200, 'Products found', products));
+});

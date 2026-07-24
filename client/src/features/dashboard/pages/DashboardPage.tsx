@@ -21,6 +21,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
 import api from '../../../config/api';
+import { IMEISearchBar } from '../components/IMEISearchBar';
+import { ProductTransferPanel } from '../components/ProductTransferPanel';
+import { RecentTransfersWidget } from '../components/RecentTransfersWidget';
 
 interface Stats {
   totalProducts: number;
@@ -42,27 +45,45 @@ export const DashboardPage: React.FC = () => {
   const [transfers, setTransfers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-      try {
-        setLoading(true);
-        if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
-          const response = await api.get('/dashboard/stats');
-          setStats(response.data.data);
-        } else {
-          // Guard or Staff member: load transfers list instead (avoids 403)
-          const response = await api.get('/transfers', { params: { limit: 100 } });
-          setTransfers(response.data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching dashboard statistics', err);
-      } finally {
-        setLoading(false);
+  // IMEI Search & Sliding Panel States
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  const fetchDashboardData = async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
+        const [statsRes, transfersRes] = await Promise.all([
+          api.get('/dashboard/stats'),
+          api.get('/transfers', { params: { limit: 10 } })
+        ]);
+        setStats(statsRes.data.data);
+        setTransfers(transfersRes.data.data || []);
+      } else {
+        // Guard or Staff member: load transfers list instead (avoids 403)
+        const response = await api.get('/transfers', { params: { limit: 100 } });
+        setTransfers(response.data.data || []);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching dashboard statistics', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
   }, [user]);
+
+  const handleSelectProduct = (product: any) => {
+    setSelectedProduct(product);
+    setPanelOpen(true);
+  };
+
+  const handleTransferSuccess = () => {
+    fetchDashboardData();
+  };
 
   if (loading) {
     return (
@@ -242,6 +263,9 @@ export const DashboardPage: React.FC = () => {
         subtitle="Real-time multi-branch asset transfers and inventory health metrics"
       />
 
+      {/* TOP PREMIUM SEARCH BAR SECTION */}
+      <IMEISearchBar onSelectProduct={handleSelectProduct} />
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Link to={ROUTES.PRODUCTS} className="block cursor-pointer">
@@ -318,6 +342,9 @@ export const DashboardPage: React.FC = () => {
         </Link>
       </div>
 
+      {/* RECENT TRANSFERS WIDGET */}
+      <RecentTransfersWidget transfers={transfers} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Branch stock allocation */}
         <Card className="lg:col-span-2 glass-card">
@@ -384,6 +411,15 @@ export const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* RIGHT SLIDING PRODUCT TRANSFER PANEL */}
+      <ProductTransferPanel
+        product={selectedProduct}
+        isOpen={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        onTransferSuccess={handleTransferSuccess}
+        adminUser={user}
+      />
     </div>
   );
 };

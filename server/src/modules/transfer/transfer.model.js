@@ -32,6 +32,12 @@ const transferSchema = new mongoose.Schema(
       default: 'pending'
     },
     notes: String,
+    reason: {
+      type: String,
+      default: 'Branch Transfer'
+    },
+    expectedDeliveryDate: Date,
+    remarks: String,
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Staff'

@@ -8,7 +8,8 @@ import {
   updateProduct,
   deleteProduct,
   generateProductQR,
-  getProductHistory
+  getProductHistory,
+  searchProducts
 } from './product.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
@@ -23,6 +24,7 @@ router.post('/categories', authorize('super_admin'), auditTrail('productCategory
 router.get('/categories', getProductCategories);
 
 // Product view is allowed for anyone logged in (restricted by branch internally)
+router.get('/search', searchProducts);
 router.get('/', getAllProducts);
 router.get('/:id', getProductById);
 router.get('/:id/history', getProductHistory);

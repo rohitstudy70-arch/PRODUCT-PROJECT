@@ -9,6 +9,7 @@ import Staff from '../staff/staff.model.js';
 import QRCode from '../qr/qrCode.model.js';
 import SecurityScan from '../security/securityScan.model.js';
 import Notification from '../notification/notification.model.js';
+import AuditLog from '../audit/auditLog.model.js';
 import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
@@ -805,4 +806,167 @@ export const confirmArrivalByStaff = asyncHandler(async (req, res) => {
   res.status(200).json(
     new ApiResponse(200, `Branch arrival confirmed: Manifest ${transfer.transferId} received successfully`, transfer)
   );
+});
+
+// --- ASSIGN PRODUCT BY IMEI DIRECT TRANSFER ---
+export const assignIMEITransfer = asyncHandler(async (req, res) => {
+  const { 
+    productId, 
+    destinationBranchId, 
+    courierId, 
+    reason = 'Branch Transfer', 
+    expectedDeliveryDate, 
+    remarks 
+  } = req.body;
+
+  if (!productId || !destinationBranchId || !courierId) {
+    throw new ApiError(400, 'Product ID/IMEI, Destination Branch, and Courier Boy are required');
+  }
+
+  // Find product
+  const product = await Product.findById(productId)
+    .populate('currentBranchId', 'name code address email phone contactPerson managerName');
+
+  if (!product) {
+    throw new ApiError(404, 'Product not found');
+  }
+
+  if (['blocked', 'lost', 'scrapped'].includes(product.status)) {
+    throw new ApiError(400, `Cannot transfer product with status: ${product.status.toUpperCase()}`);
+  }
+
+  const currentBranchId = product.currentBranchId?._id || product.currentBranchId;
+
+  if (currentBranchId && currentBranchId.toString() === destinationBranchId.toString()) {
+    throw new ApiError(400, 'Destination branch cannot be the same as current source branch');
+  }
+
+  // Find courier staff
+  const courier = await Staff.findById(courierId);
+  if (!courier) {
+    throw new ApiError(404, 'Courier staff not found');
+  }
+
+  // Generate unique Transfer ID: TRF-2026-000001
+  const year = new Date().getFullYear();
+  const transferId = await getNextSequence(`transfer_${year}`, `TRF-${year}-`, 6);
+
+  // 1. Create Transfer Record
+  const transfer = await Transfer.create({
+    organizationId: req.user.organizationId,
+    transferId,
+    fromBranchId: currentBranchId || destinationBranchId,
+    toBranchId: destinationBranchId,
+    assignedStaffId: courier._id,
+    status: 'in_transit',
+    dispatchedAt: new Date(),
+    reason,
+    expectedDeliveryDate: expectedDeliveryDate ? new Date(expectedDeliveryDate) : null,
+    remarks,
+    notes: `Assigned via Dashboard IMEI Transfer. Reason: ${reason}`,
+    requestedBy: req.user._id,
+    approvedBy: req.user._id,
+    approvedAt: new Date(),
+    createdBy: req.user._id,
+    totalItems: 1
+  });
+
+  // 2. Create Transfer Item
+  await TransferItem.create({
+    transferId: transfer._id,
+    productId: product._id,
+    status: 'dispatched'
+  });
+
+  // 3. Update Product status
+  product.status = 'in_transit';
+  product.currentHolderId = courier._id;
+  await product.save();
+
+  // 4. Update Inventory status
+  await Inventory.findOneAndUpdate(
+    { productId: product._id },
+    { status: 'in_transit', assignedTo: courier._id, updatedBy: req.user._id }
+  );
+
+  // 5. Create Product History timeline entry
+  await ProductHistory.create({
+    productId: product._id,
+    action: 'dispatched',
+    fromBranchId: currentBranchId,
+    toBranchId: destinationBranchId,
+    transferId: transfer._id,
+    staffId: courier._id,
+    securityGuardId: req.user._id,
+    notes: `Dashboard IMEI Transfer assigned to courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}). Reason: ${reason}. ${remarks || ''}`
+  });
+
+  // 6. Create Audit Log
+  await AuditLog.create({
+    organizationId: req.user.organizationId,
+    userId: req.user._id,
+    userName: `${req.user.firstName} ${req.user.lastName}`,
+    userRole: req.user.role,
+    action: 'transfer_assigned',
+    module: 'logistics',
+    entityType: 'Product',
+    entityId: product._id.toString(),
+    description: `Assigned Product ${product.name} (IMEI: ${product.imei || 'N/A'}, ID: ${product.productId}) to Courier ${courier.firstName} ${courier.lastName} (${courier.employeeId}) for Destination Branch. Transfer ID: ${transferId}`,
+    ipAddress: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1',
+    userAgent: req.headers['user-agent'] || 'Dashboard Browser Client',
+    branchId: currentBranchId,
+    timestamp: new Date()
+  });
+
+  // 7. Create Notifications
+  const destBranch = await Branch.findById(destinationBranchId);
+  const destAdminNotification = Notification.create({
+    organizationId: req.user.organizationId,
+    branchId: destinationBranchId,
+    type: 'transfer_created',
+    title: `Inbound Transfer Assigned (${transferId})`,
+    message: `Product ${product.name} (IMEI: ${product.imei || product.productId}) assigned to Courier ${courier.firstName} ${courier.lastName} destined for ${destBranch?.name || 'Destination Branch'}.`,
+    link: `/transfers/${transfer._id}`
+  });
+
+  const courierNotification = Notification.create({
+    organizationId: req.user.organizationId,
+    userId: courier._id,
+    type: 'transfer_approved',
+    title: `New Delivery Assignment (${transferId})`,
+    message: `You have been assigned to deliver product ${product.name} (IMEI: ${product.imei || product.productId}) to ${destBranch?.name || 'Destination Branch'}.`,
+    link: `/transfers/${transfer._id}`
+  });
+
+  await Promise.allSettled([destAdminNotification, courierNotification]);
+
+  // 8. Socket Broadcast
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('transfer_created', {
+      transferId: transfer._id,
+      code: transferId,
+      productName: product.name,
+      imei: product.imei,
+      courierName: `${courier.firstName} ${courier.lastName}`,
+      destinationBranchName: destBranch?.name
+    });
+    io.emit('product_updated', {
+      productId: product._id,
+      status: 'in_transit',
+      currentHolder: `${courier.firstName} ${courier.lastName}`
+    });
+  }
+
+  // Populate transfer result
+  const populatedTransfer = await Transfer.findById(transfer._id)
+    .populate('fromBranchId', 'name code email phone address contactPerson')
+    .populate('toBranchId', 'name code email phone address contactPerson')
+    .populate('assignedStaffId', 'firstName lastName employeeId email phone fatherName alternatePhone aadharNumber panNumber addressDetails joiningDate designation bloodGroup emergencyContact status qrCode avatar')
+    .populate('requestedBy', 'firstName lastName employeeId');
+
+  res.status(201).json(new ApiResponse(201, 'Product assigned and transfer created successfully', {
+    transfer: populatedTransfer,
+    product
+  }));
 });

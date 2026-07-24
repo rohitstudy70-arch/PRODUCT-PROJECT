@@ -50,8 +50,12 @@ const productSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['available', 'assigned', 'in_transit', 'delivered', 'missing', 'scrapped'],
+      enum: ['available', 'assigned', 'in_transit', 'delivered', 'missing', 'scrapped', 'blocked', 'lost'],
       default: 'available'
+    },
+    rackNumber: {
+      type: String,
+      default: 'RACK-01'
     },
     qrCode: String,
     rfidTag: {
