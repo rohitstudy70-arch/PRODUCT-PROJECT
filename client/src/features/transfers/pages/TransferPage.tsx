@@ -119,7 +119,8 @@ export const TransferPage: React.FC = () => {
 
   const fetchStaffAndProducts = async () => {
     try {
-      const stRes = await api.get('/staff', { params: { limit: 100 } });
+      // Only fetch courier/delivery staff (role=staff), not admins or security guards
+      const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
       setStaffList(stRes.data?.data || []);
 
       const prRes = await api.get('/products', { params: { limit: 500 } });

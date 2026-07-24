@@ -69,7 +69,8 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
 
   const fetchStaff = async () => {
     try {
-      const res = await api.get('/staff', { params: { limit: 100 } });
+      // Only fetch courier/delivery staff (role=staff), not admins or security guards
+      const res = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
       setStaffList(res.data?.data || []);
     } catch (err) {
       console.error('Failed to load staff:', err);
