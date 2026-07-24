@@ -7,30 +7,23 @@ import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
-  const query = { isDeleted: { $ne: true } };
+  const globalQuery = { isDeleted: { $ne: true } };
   const transferQuery = {};
 
-  // Branch isolation
   if (req.user.role !== 'super_admin' && req.user.branchId) {
-    query.$or = [
-      { currentBranchId: req.user.branchId },
-      { currentBranchId: null },
-      { currentBranchId: { $exists: false } }
-    ];
     transferQuery.$or = [
       { fromBranchId: req.user.branchId },
       { toBranchId: req.user.branchId }
     ];
   }
 
-  // Count products by status
-  const totalProducts = await Product.countDocuments(query);
-  
-  const availableProducts = await Product.countDocuments({ ...query, status: 'available' });
-  const inTransitProducts = await Product.countDocuments({ ...query, status: 'in_transit' });
-  const assignedProducts = await Product.countDocuments({ ...query, status: 'assigned' });
-  const missingProducts = await Product.countDocuments({ ...query, status: 'missing' });
-  const scrappedProducts = await Product.countDocuments({ ...query, status: 'scrapped' });
+  // Count global enterprise products by status (Always fetches all 7 products)
+  const totalProducts = await Product.countDocuments(globalQuery);
+  const availableProducts = await Product.countDocuments({ ...globalQuery, status: 'available' });
+  const inTransitProducts = await Product.countDocuments({ ...globalQuery, status: 'in_transit' });
+  const assignedProducts = await Product.countDocuments({ ...globalQuery, status: 'assigned' });
+  const missingProducts = await Product.countDocuments({ ...globalQuery, status: 'missing' });
+  const scrappedProducts = await Product.countDocuments({ ...globalQuery, status: 'scrapped' });
 
   // Count transfers
   const todayStart = new Date();
@@ -61,35 +54,32 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     result: 'rejected'
   });
 
-  // Branch Stock Aggregation
-  let branchStocks = [];
-  if (req.user.role === 'super_admin') {
-    branchStocks = await Product.aggregate([
-      { $match: { isDeleted: { $ne: true } } },
-      {
-        $group: {
-          _id: '$currentBranchId',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'branches',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'branch'
-        }
-      },
-      { $unwind: { path: '$branch', preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          branchName: { $ifNull: ['$branch.name', 'Head Office'] },
-          branchCode: { $ifNull: ['$branch.code', 'HO'] },
-          count: 1
-        }
+  // Branch Stock Aggregation (for all admins)
+  const branchStocks = await Product.aggregate([
+    { $match: { isDeleted: { $ne: true } } },
+    {
+      $group: {
+        _id: '$currentBranchId',
+        count: { $sum: 1 }
       }
-    ]);
-  }
+    },
+    {
+      $lookup: {
+        from: 'branches',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'branch'
+      }
+    },
+    { $unwind: { path: '$branch', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        branchName: { $ifNull: ['$branch.name', 'Central Main Stock'] },
+        branchCode: { $ifNull: ['$branch.code', 'PRN'] },
+        count: 1
+      }
+    }
+  ]);
 
   res.status(200).json(
     new ApiResponse(200, 'Dashboard statistics fetched successfully', {
