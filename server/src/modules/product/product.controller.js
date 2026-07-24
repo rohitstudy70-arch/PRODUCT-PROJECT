@@ -132,11 +132,13 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   if (status) query.status = status;
   if (category) query.category = category;
-  if (branchId) query.currentBranchId = branchId;
 
-  // Branch Admins and Store Managers can only view their own branch stock
-  if (req.user.role !== 'super_admin' && req.user.branchId) {
-    query.currentBranchId = req.user.branchId;
+  if (branchId) {
+    if (branchId === 'null' || branchId === 'CENTRAL') {
+      query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];
+    } else {
+      query.currentBranchId = branchId;
+    }
   }
 
   if (search) {

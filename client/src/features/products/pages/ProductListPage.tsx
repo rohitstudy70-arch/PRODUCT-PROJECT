@@ -115,7 +115,9 @@ export const ProductListPage: React.FC = () => {
     setVendor('');
     setStatus('available');
     setCondition('good');
-    setCurrentBranchId(branches[0]?._id || '');
+    const userBranchStr = user?.branchId ? (typeof user.branchId === 'object' ? (user.branchId as any)._id : user.branchId) : '';
+    const centralBranch = branches.find(b => b.name.toLowerCase().includes('purnea') || b.name.toLowerCase().includes('central'));
+    setCurrentBranchId(userBranchStr || (centralBranch ? centralBranch._id : (branches[0]?._id || '')));
     setNotes('');
     setRfidTag('');
     setModalOpen(true);
@@ -201,6 +203,7 @@ export const ProductListPage: React.FC = () => {
       toast.success('Product registered successfully');
 
       setModalOpen(false);
+      setPage(1);
       fetchData();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save product');
