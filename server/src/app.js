@@ -15,6 +15,7 @@ import transferRoutes from './modules/transfer/transfer.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import trackingRoutes from './modules/tracking/tracking.routes.js';
+import securityRoutes from './modules/security/security.routes.js';
 
 import { defaultLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -69,6 +70,7 @@ app.use('/api/v1/transfers', transferRoutes);
 app.use('/api/v1/audit-logs', auditRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/tracking', trackingRoutes);
+app.use('/api/v1/security', securityRoutes);
 
 // 404 Route handler
 app.use('*', (req, res, next) => {

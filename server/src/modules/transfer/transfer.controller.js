@@ -363,6 +363,12 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
     gateNumber,
     securityGuardId: req.user._id,
     staffQR: { scanned: true, valid: true, staffId: staff._id },
+    productsScanned: (scannedProducts || []).map(p => ({
+      productId: p._id,
+      productQR: p.qrCode || p.serialNumber || p.productId,
+      valid: true,
+      status: 'approved'
+    })),
     result: 'approved',
     notes
   });
@@ -525,6 +531,12 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
     gateNumber,
     securityGuardId: req.user._id,
     staffQR: { scanned: true, valid: true, staffId: staff._id },
+    productsScanned: (scannedProducts || []).map(p => ({
+      productId: p._id,
+      productQR: p.qrCode || p.serialNumber || p.productId,
+      valid: true,
+      status: 'approved'
+    })),
     result: isPerfectMatch ? 'approved' : 'approved', // Accept but register discrepancies
     mismatches: { missing: missingProductIds },
     notes: isPerfectMatch ? 'Perfect verification entry' : 'Received with missing items'
