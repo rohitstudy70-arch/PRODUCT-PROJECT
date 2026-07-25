@@ -29,7 +29,9 @@ export const Header: React.FC = () => {
     return 'Home';
   };
 
-  const branchName = user?.branchId ? user.branchId.name : 'Central Head Office';
+  const branchName = user?.role === 'super_admin' 
+    ? 'Central Head Office (Main Admin)' 
+    : user?.branchId ? user.branchId.name : 'Central Head Office';
 
   return (
     <header className="h-16 border-b border-border bg-card/40 backdrop-blur-md px-6 flex items-center justify-between relative z-20">

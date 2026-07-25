@@ -165,10 +165,15 @@ export const BranchListPage: React.FC = () => {
       accessorKey: 'name',
       render: (item) => (
         <div className="flex items-center space-x-2">
-          <span className="font-bold text-slate-200">{item.name}</span>
-          {(item.code === 'PRN' || item.name.toLowerCase().includes('central') || item.name.toLowerCase().includes('purnea')) && (
-            <Badge variant="outline" className="text-[10px] bg-indigo-950/60 text-indigo-300 border-indigo-700/60">
-              Central Office
+          <span className="font-bold text-slate-200 uppercase">{item.name}</span>
+          {(item.code === 'PRN' || item.name.toLowerCase().includes('central') || item.name.toLowerCase().includes('purnea')) ? (
+            <Badge className="text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40 flex items-center space-x-1">
+              <span>👑</span>
+              <span>Central Control Branch</span>
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] bg-slate-900 text-slate-400 border-slate-700">
+              Sub-Branch
             </Badge>
           )}
         </div>
@@ -215,6 +220,24 @@ export const BranchListPage: React.FC = () => {
           </Button>
         )}
       </PageHeader>
+
+      {/* Central Branch Control Info Banner */}
+      <div className="border border-indigo-500/30 bg-indigo-950/40 rounded-xl p-4 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="h-10 w-10 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-lg border border-indigo-500/40">
+            👑
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-100 flex items-center space-x-2">
+              <span>Central Head Office Hierarchy & Access Control</span>
+              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">Main Admin Control</Badge>
+            </h4>
+            <p className="text-xs text-slate-400 mt-0.5">
+              All sub-branches (Purnea, Noida, Patna, etc.) are centrally controlled by the Main Admin operating from Central Branch.
+            </p>
+          </div>
+        </div>
+      </div>
 
       <DataTable
         columns={columns}
