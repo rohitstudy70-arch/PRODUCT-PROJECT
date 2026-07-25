@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Transfer from './transfer.model.js';
 import DutySession from '../tracking/dutySession.model.js';
 import TransferItem from './transferItem.model.js';
@@ -298,17 +299,21 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   const manifestItems = await TransferItem.find({ transferId: transfer._id });
   const manifestProductIds = manifestItems.map(item => item.productId.toString());
 
-  // Find scanned products in Database
-  const scannedProducts = await Product.find({
-    $or: [
-      { _id: { $in: scannedProductQrs } },
-      { qrCode: { $in: scannedProductQrs } },
-      { serialNumber: { $in: scannedProductQrs } },
-      { productId: { $in: scannedProductQrs } },
-      { imei: { $in: scannedProductQrs } },
-      { rfidTag: { $in: scannedProductQrs } }
-    ]
-  });
+  // Find scanned products in Database safely without CastError on _id
+  const validObjectIds = (scannedProductQrs || []).filter(id => mongoose.Types.ObjectId.isValid(id));
+  
+  const productOrConditions = [
+    { qrCode: { $in: scannedProductQrs } },
+    { serialNumber: { $in: scannedProductQrs } },
+    { productId: { $in: scannedProductQrs } },
+    { imei: { $in: scannedProductQrs } },
+    { rfidTag: { $in: scannedProductQrs } }
+  ];
+  if (validObjectIds.length > 0) {
+    productOrConditions.unshift({ _id: { $in: validObjectIds } });
+  }
+
+  const scannedProducts = await Product.find({ $or: productOrConditions });
 
   const scannedProductIds = scannedProducts.map(p => p._id.toString());
 
@@ -471,14 +476,20 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   const manifestItems = await TransferItem.find({ transferId: transfer._id });
   const manifestProductIds = manifestItems.map(item => item.productId.toString());
 
-  const scannedProducts = await Product.find({
-    $or: [
-      { qrCode: { $in: scannedProductQrs } },
-      { serialNumber: { $in: scannedProductQrs } },
-      { productId: { $in: scannedProductQrs } },
-      { rfidTag: { $in: scannedProductQrs } }
-    ]
-  });
+  const validEntryObjectIds = (scannedProductQrs || []).filter(id => mongoose.Types.ObjectId.isValid(id));
+  
+  const entryOrConditions = [
+    { qrCode: { $in: scannedProductQrs } },
+    { serialNumber: { $in: scannedProductQrs } },
+    { productId: { $in: scannedProductQrs } },
+    { imei: { $in: scannedProductQrs } },
+    { rfidTag: { $in: scannedProductQrs } }
+  ];
+  if (validEntryObjectIds.length > 0) {
+    entryOrConditions.unshift({ _id: { $in: validEntryObjectIds } });
+  }
+
+  const scannedProducts = await Product.find({ $or: entryOrConditions });
 
   const scannedProductIds = scannedProducts.map(p => p._id.toString());
 
