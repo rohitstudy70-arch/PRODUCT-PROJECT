@@ -8,9 +8,9 @@ const router = Router();
 
 router.use(authenticate);
 
-// View branches is allowed for super_admin and branch_admin
-router.get('/', authorize('super_admin', 'branch_admin'), getAllBranches);
-router.get('/:id', authorize('super_admin', 'branch_admin'), getBranchById);
+// View branches is allowed for any authenticated user
+router.get('/', getAllBranches);
+router.get('/:id', getBranchById);
 
 // Modification of branches is strictly SUPER_ADMIN
 router.post('/', authorize('super_admin'), auditTrail('branch', 'create'), createBranch);
