@@ -133,7 +133,9 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   if (status) query.status = status;
   if (category) query.category = category;
 
-  if (branchId) {
+  if (req.user.role === 'staff') {
+    query.currentHolderId = req.user._id;
+  } else if (branchId) {
     if (branchId === 'null' || branchId === 'CENTRAL') {
       query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];
     } else {

@@ -105,13 +105,16 @@ export const approveTransfer = asyncHandler(async (req, res) => {
 
 // --- LIST TRANSFERS ---
 export const getTransfers = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status } = req.query;
+  const { page = 1, limit = 10, status, assignedStaffId } = req.query;
 
   const query = {};
   if (status) query.status = status;
+  if (assignedStaffId) query.assignedStaffId = assignedStaffId;
 
-  // Branch isolation
-  if (req.user.role !== 'super_admin' && req.user.branchId) {
+  // Courier staff isolation: Users with role 'staff' strictly see ONLY transfers assigned to them
+  if (req.user.role === 'staff') {
+    query.assignedStaffId = req.user._id;
+  } else if (req.user.role !== 'super_admin' && req.user.branchId) {
     query.$or = [
       { fromBranchId: req.user.branchId },
       { toBranchId: req.user.branchId }
