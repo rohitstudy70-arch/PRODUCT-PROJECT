@@ -175,8 +175,8 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Transfer not found');
   }
 
-  if (!['approved', 'preparing'].includes(transfer.status)) {
-    throw new ApiError(400, `Cannot prepare dispatch. Current status is ${transfer.status}`);
+  if (!['approved', 'preparing', 'ready_for_dispatch', 'in_transit'].includes(transfer.status)) {
+    throw new ApiError(400, `Cannot scan product. Current status is ${transfer.status}`);
   }
 
   const product = await Product.findOne({

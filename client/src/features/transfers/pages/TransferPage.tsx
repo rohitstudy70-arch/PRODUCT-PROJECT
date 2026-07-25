@@ -687,16 +687,66 @@ export const TransferPage: React.FC = () => {
                     <div>
                       <p className="text-xs font-bold text-slate-200">{item.productId?.name || 'Unknown Product'}</p>
                       <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                        ID: {item.productId?.productId || 'N/A'} | SN: {item.productId?.serialNumber || 'N/A'}
+                        ID: {item.productId?.productId || 'N/A'} | SN: {item.productId?.serialNumber || 'N/A'} | IMEI: {item.productId?.imei || 'N/A'}
                       </p>
                     </div>
-                    <Badge variant={item.status === 'scanned' ? 'success' : 'secondary'}>
-                      {item.status}
+                    <Badge variant={item.status === 'scanned' || item.status === 'received' ? 'success' : 'secondary'}>
+                      {item.status === 'scanned' ? '✅ Verified' : item.status}
                     </Badge>
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Inline Product Scanner Section inside Manifest Modal */}
+            {['approved', 'preparing', 'ready_for_dispatch', 'in_transit'].includes(selectedTransfer.status) && (
+              <div className="border border-slate-800 bg-slate-950/60 rounded-lg p-3 space-y-2.5 mt-3">
+                <label className="text-xs font-bold text-indigo-400 flex items-center space-x-1.5">
+                  <Scan className="h-4 w-4" />
+                  <span>Scan / Verify Product Tag (QR / Serial / IMEI)</span>
+                </label>
+                <div className="flex space-x-2">
+                  <Input
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    placeholder="Scan or type Product ID / IMEI / Serial No."
+                    className="bg-slate-900 border-slate-800 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (scanInput.trim()) {
+                          handleStoreRoomScan(scanInput.trim());
+                        }
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (scanInput.trim()) {
+                        handleStoreRoomScan(scanInput.trim());
+                      } else {
+                        setShowCameraInModal(!showCameraInModal);
+                      }
+                    }}
+                    className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+                  >
+                    {scanInput.trim() ? 'Verify Item' : '📷 Camera'}
+                  </Button>
+                </div>
+
+                {/* Camera scanner inside manifest modal */}
+                {showCameraInModal && (
+                  <div className="border border-slate-800 rounded-lg overflow-hidden p-2 bg-slate-900/90 mt-2">
+                    <QRScanner
+                      onScanSuccess={(code) => handleStoreRoomScan(code)}
+                      placeholder="Scan product barcode / QR"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Action buttons */}
             <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
@@ -706,13 +756,12 @@ export const TransferPage: React.FC = () => {
                 <Button onClick={() => handleApprove(selectedTransfer._id)}>Approve Transfer</Button>
               )}
 
-              {/* Store manager or courier staff scan dispatch preparation */}
-              {(user?.role === 'store_manager' || user?.role === 'super_admin' || user?.role === 'staff') && 
-                ['approved', 'preparing'].includes(selectedTransfer.status) && (
-                  <Button onClick={() => handleOpenStoreRoomScan(selectedTransfer)} className="flex items-center space-x-1">
-                    <Scan className="h-4 w-4" />
-                    <span>Scan Warehouse Pickup</span>
-                  </Button>
+              {/* Scan product pickup & verification button for all active statuses */}
+              {['approved', 'preparing', 'ready_for_dispatch', 'in_transit'].includes(selectedTransfer.status) && (
+                <Button onClick={() => handleOpenStoreRoomScan(selectedTransfer)} className="flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Scan className="h-4 w-4" />
+                  <span>Full Camera Scanner</span>
+                </Button>
               )}
             </div>
           </div>
