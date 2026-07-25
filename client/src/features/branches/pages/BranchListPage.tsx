@@ -26,6 +26,13 @@ interface Branch {
   };
   contactPerson: string;
   status: 'active' | 'inactive' | 'suspended';
+  adminUser?: {
+    _id: string;
+    email: string;
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export const BranchListPage: React.FC = () => {
@@ -107,6 +114,8 @@ export const BranchListPage: React.FC = () => {
     setPincode(branch.address?.pincode || '');
     setContactPerson(branch.contactPerson || '');
     setStatus(branch.status);
+    setAdminEmail(branch.adminUser?.email || '');
+    setAdminPassword('');
     setModalOpen(true);
   };
 
@@ -132,8 +141,8 @@ export const BranchListPage: React.FC = () => {
         address: { street, city, state, country: 'India', pincode },
         contactPerson,
         status,
-        adminEmail,
-        adminPassword
+        ...(adminEmail ? { adminEmail } : {}),
+        ...(adminPassword ? { adminPassword } : {})
       };
 
       if (editBranch) {
@@ -185,6 +194,20 @@ export const BranchListPage: React.FC = () => {
       )
     },
     { header: 'City', accessorKey: 'address.city', render: (item) => item.address?.city },
+    {
+      header: 'Branch Admin Login ID',
+      accessorKey: 'adminUser',
+      render: (item) => (
+        item.adminUser ? (
+          <div>
+            <p className="font-mono text-xs font-bold text-indigo-300">{item.adminUser.email}</p>
+            <p className="text-[10px] font-mono text-slate-400">Emp ID: {item.adminUser.employeeId}</p>
+          </div>
+        ) : (
+          <span className="text-[11px] text-slate-500 font-mono">No Admin ID</span>
+        )
+      )
+    },
     { header: 'Contact Person', accessorKey: 'contactPerson' },
     {
       header: 'Status',
@@ -344,31 +367,46 @@ export const BranchListPage: React.FC = () => {
             )}
           </div>
 
-          {!editBranch && (
-            <div className="border-t border-slate-850 pt-3 mt-3 space-y-3">
-              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Branch Admin Login Setup</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400 text-foreground">Admin Email / Username *</label>
-                  <Input 
-                    type="email" 
-                    value={adminEmail} 
-                    onChange={(e) => setAdminEmail(e.target.value)} 
-                    placeholder="ranchi.admin@arshi.com" 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-400 text-foreground">Admin Password *</label>
-                  <Input 
-                    type="password" 
-                    value={adminPassword} 
-                    onChange={(e) => setAdminPassword(e.target.value)} 
-                    placeholder="••••••••" 
-                  />
-                </div>
+          {/* Branch Admin Login ID & Password Edit/Reset Section */}
+          <div className="border-t border-slate-800 pt-3 mt-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-1">
+                <span>🔑</span>
+                <span>Branch Admin Login Credentials Setup & Password Reset</span>
+              </p>
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-300">
+                Super Admin Privilege
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Admin Email / Login Username *</label>
+                <Input 
+                  type="email" 
+                  value={adminEmail} 
+                  onChange={(e) => setAdminEmail(e.target.value)} 
+                  placeholder="e.g. noida.admin@arshi.com" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">
+                  {editBranch ? 'New / Reset Password (Optional)' : 'Admin Password *'}
+                </label>
+                <Input 
+                  type="password" 
+                  value={adminPassword} 
+                  onChange={(e) => setAdminPassword(e.target.value)} 
+                  placeholder={editBranch ? 'Leave blank to keep current password' : '••••••••'} 
+                />
               </div>
             </div>
-          )}
+            {editBranch && (
+              <p className="text-[10px] text-amber-300 font-medium italic">
+                * Super Admin Note: Type a new email or password above to immediately update/reset this Branch Admin's login credentials.
+              </p>
+            )}
+          </div>
 
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
