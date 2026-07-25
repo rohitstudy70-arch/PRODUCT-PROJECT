@@ -7,7 +7,8 @@ import { Input } from '../../../components/ui/input';
 import { Badge } from '../../../components/ui/badge';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, Edit } from 'lucide-react';
+import { Plus, Trash, Edit, QrCode } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Branch {
@@ -37,6 +38,10 @@ export const BranchListPage: React.FC = () => {
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [editBranch, setEditBranch] = useState<Branch | null>(null);
+
+  // Branch Scanner modal state
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
+  const [selectedBranchForScanner, setSelectedBranchForScanner] = useState<Branch | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -188,6 +193,24 @@ export const BranchListPage: React.FC = () => {
         <Badge variant={item.status === 'active' ? 'success' : item.status === 'suspended' ? 'destructive' : 'secondary'}>
           {item.status}
         </Badge>
+      )
+    },
+    {
+      header: 'Branch Scanner QR',
+      accessorKey: 'scanner',
+      render: (item) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setSelectedBranchForScanner(item);
+            setScannerModalOpen(true);
+          }}
+          className="flex items-center space-x-1.5 text-xs border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/60 bg-indigo-950/20 cursor-pointer"
+        >
+          <QrCode className="h-3.5 w-3.5" />
+          <span>Branch QR ({item.code})</span>
+        </Button>
       )
     },
     {
@@ -352,6 +375,64 @@ export const BranchListPage: React.FC = () => {
             <Button type="submit">Save Branch</Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Branch Scanner QR Code Modal */}
+      <Dialog
+        isOpen={scannerModalOpen}
+        onClose={() => setScannerModalOpen(false)}
+        title="Official Branch Scanner Tag (QR Code)"
+      >
+        {selectedBranchForScanner && (
+          <div className="flex flex-col items-center justify-center p-4 text-slate-200 space-y-4">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
+              <div className="h-2 bg-gradient-to-r from-amber-500 via-indigo-500 to-emerald-500" />
+              
+              <div className="p-6 flex flex-col items-center text-center space-y-4">
+                <div>
+                  <h3 className="text-xs font-extrabold tracking-wider text-slate-400 uppercase">ARSHI ENTERPRISE</h3>
+                  <h2 className="text-xl font-black text-amber-400 mt-1 uppercase tracking-wide">
+                    {selectedBranchForScanner.name} BRANCH
+                  </h2>
+                  <Badge className="mt-1 bg-indigo-600/30 text-indigo-300 border-indigo-500/40 text-xs font-mono">
+                    BRANCH CODE: {selectedBranchForScanner.code}
+                  </Badge>
+                </div>
+
+                <div className="p-4 bg-white rounded-2xl shadow-inner border-4 border-slate-800 flex items-center justify-center">
+                  <QRCode
+                    value={`BRANCH-${selectedBranchForScanner.code}`}
+                    size={170}
+                    level="H"
+                  />
+                </div>
+
+                <div className="text-center space-y-1">
+                  <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
+                    SCANNER PAYLOAD: BRANCH-{selectedBranchForScanner.code}
+                  </p>
+                  <p className="text-xs text-slate-300 font-medium">
+                    {selectedBranchForScanner.address?.city || selectedBranchForScanner.name}, {selectedBranchForScanner.address?.state || 'India'}
+                  </p>
+                  {selectedBranchForScanner.contactPerson && (
+                    <p className="text-[11px] text-amber-300 font-semibold">
+                      Contact Person: {selectedBranchForScanner.contactPerson}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => window.print()} className="text-xs">
+                Print Scanner Label
+              </Button>
+              <Button onClick={() => setScannerModalOpen(false)} className="text-xs">
+                Close
+              </Button>
+            </div>
+          </div>
+        )}
       </Dialog>
     </div>
   );
