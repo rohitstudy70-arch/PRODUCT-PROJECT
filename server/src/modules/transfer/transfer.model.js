@@ -47,6 +47,7 @@ const transferSchema = new mongoose.Schema(
       ref: 'Staff'
     },
     approvedAt: Date,
+    scannedAt: Date,
     dispatchedAt: Date,
     receivedAt: Date,
     receivedBy: {

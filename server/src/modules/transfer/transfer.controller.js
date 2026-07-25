@@ -210,11 +210,13 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
   transferItem.status = 'scanned';
   await transferItem.save();
 
+  transfer.scannedAt = new Date();
+
   // If transfer was 'approved', update to 'preparing'
   if (transfer.status === 'approved') {
     transfer.status = 'preparing';
-    await transfer.save();
   }
+  await transfer.save();
 
   // Check if all items are scanned
   const unscannedCount = await TransferItem.countDocuments({

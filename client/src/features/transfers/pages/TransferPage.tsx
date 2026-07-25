@@ -21,6 +21,7 @@ interface Transfer {
   totalItems: number;
   createdAt: string;
   approvedAt?: string;
+  scannedAt?: string;
   dispatchedAt?: string;
   receivedAt?: string;
   arrivedAt?: string;
@@ -647,7 +648,7 @@ export const TransferPage: React.FC = () => {
 
               <div className="mt-2 col-span-2 border-t border-slate-850 pt-2 space-y-1.5">
                 <p className="text-slate-400 font-semibold mb-1">Logistical Timestamps</p>
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-300 bg-slate-950/60 p-2.5 rounded border border-slate-850/80">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-slate-300 bg-slate-950/60 p-2.5 rounded border border-slate-850/80">
                   <div>
                     <span className="text-slate-500 font-bold">CREATED:</span>
                     <p className="font-mono mt-0.5 text-slate-300">
@@ -660,14 +661,24 @@ export const TransferPage: React.FC = () => {
                       {selectedTransfer.approvedAt ? new Date(selectedTransfer.approvedAt as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Pending'}
                     </p>
                   </div>
+                  <div>
+                    <span className="text-indigo-400 font-bold flex items-center">
+                      <span className="mr-1">📷</span> SCANNED / PREPARED:
+                    </span>
+                    <p className="font-mono mt-0.5 text-indigo-300 font-semibold">
+                      {(selectedTransfer.scannedAt || (selectedTransfer.items?.some((i: any) => i.status === 'scanned') ? (selectedTransfer as any).updatedAt : null))
+                        ? new Date((selectedTransfer.scannedAt || (selectedTransfer as any).updatedAt) as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                        : 'Pending Scan'}
+                    </p>
+                  </div>
                   <div className="mt-1">
-                    <span className="text-slate-500 font-bold">DISPATCHED:</span>
+                    <span className="text-slate-500 font-bold">DISPATCHED (EXIT):</span>
                     <p className="font-mono mt-0.5 text-slate-300">
                       {selectedTransfer.dispatchedAt ? new Date(selectedTransfer.dispatchedAt as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'In Transit / Pending'}
                     </p>
                   </div>
-                  <div className="mt-1">
-                    <span className="text-slate-500 font-bold">RECEIVED:</span>
+                  <div className="mt-1 col-span-2">
+                    <span className="text-slate-500 font-bold">RECEIVED (ENTRY):</span>
                     <p className="font-mono mt-0.5 text-emerald-400 font-semibold">
                       {(selectedTransfer.receivedAt || selectedTransfer.arrivedAt || (selectedTransfer.status === 'received' ? (selectedTransfer as any).updatedAt : null))
                         ? new Date((selectedTransfer.receivedAt || selectedTransfer.arrivedAt || (selectedTransfer as any).updatedAt) as string).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
