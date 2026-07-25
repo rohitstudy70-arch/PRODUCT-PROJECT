@@ -311,22 +311,52 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                 )}
               </div>
 
-              {/* SECTION 2: CURRENT LOCATION CARD */}
-              <div className="bg-slate-900/80 border border-indigo-500/30 rounded-2xl p-4 space-y-3">
+              {/* SECTION 2: CURRENT LOCATION / DEPARTURE BRANCH CARD */}
+              <div className={`rounded-2xl p-4 space-y-3 border ${
+                product.status === 'in_transit'
+                  ? 'bg-amber-950/20 border-amber-500/40'
+                  : 'bg-slate-900/80 border-indigo-500/30'
+              }`}>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <div className="flex items-center space-x-2 text-indigo-400">
-                    <MapPin className="h-4 w-4" />
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">Current Branch Location</h4>
+                  <div className="flex items-center space-x-2">
+                    {product.status === 'in_transit' ? (
+                      <Truck className="h-4 w-4 text-amber-400 animate-pulse" />
+                    ) : (
+                      <MapPin className="h-4 w-4 text-indigo-400" />
+                    )}
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                      {product.status === 'in_transit'
+                        ? `ITEM LEFTED / DEPARTED FROM ${currentBranch?.name?.toUpperCase() || 'ORIGIN BRANCH'}`
+                        : 'Current Branch Location'}
+                    </h4>
                   </div>
-                  <Badge variant="outline" className="border-indigo-500/40 text-indigo-300 text-[10px]">
-                    Origin Base
-                  </Badge>
+                  {product.status === 'in_transit' ? (
+                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/50 text-[10px] uppercase font-bold flex items-center space-x-1">
+                      <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping mr-1" />
+                      <span>Departed & In Transit</span>
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-indigo-500/40 text-indigo-300 text-[10px]">
+                      Origin Base
+                    </Badge>
+                  )}
                 </div>
+
+                {product.status === 'in_transit' && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium flex items-center space-x-2">
+                    <Truck className="h-4 w-4 text-amber-400 shrink-0" />
+                    <span>
+                      <strong>Asset In Transit:</strong> Product departed from {currentBranch?.name?.toUpperCase() || 'Origin Branch'} and is on the road to destination branch.
+                    </span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Branch Name</p>
-                    <p className="text-sm font-bold text-slate-100 mt-0.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">
+                      {product.status === 'in_transit' ? 'Origin Branch (Lefted From)' : 'Branch Name'}
+                    </p>
+                    <p className="text-sm font-bold text-slate-100 mt-0.5 uppercase">
                       {currentBranch?.name || 'Central Head Office'}
                     </p>
                     <p className="text-[10px] text-indigo-400 font-mono font-semibold">
