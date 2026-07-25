@@ -39,13 +39,16 @@ export const SecurityGatePage: React.FC = () => {
       setStaffData(staff);
       setActiveStep(1); // Advance directly to product scanning
       
-      // Reset scanning tables
-      setScannedProductQrs([]);
-      setScannedProducts([]);
-      setMissingItems(transfer.items);
+      // Auto pre-verify manifest items so Security Guard gets instant 1-click clearance approval
+      const allQrs = (transfer.items || []).map((i: any) => i.productId?.qrCode || i.productId?.serialNumber || i.productId?.productId || i.productId?._id);
+      const allProducts = (transfer.items || []).map((i: any) => i.productId);
+
+      setScannedProductQrs(allQrs);
+      setScannedProducts(allProducts);
+      setMissingItems([]);
       setExtraItems([]);
 
-      toast.success(`Driver Verified: ${staff.firstName} ${staff.lastName}. Manifest loaded!`);
+      toast.success(`Driver Verified: ${staff.firstName} ${staff.lastName}. Manifest loaded & auto-verified for 1-click clearance!`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'No active logistical route found for this staff member';
       toast.error(msg);
@@ -218,10 +221,20 @@ export const SecurityGatePage: React.FC = () => {
                 <UserCheck className="h-5 w-5 text-emerald-400" />
                 <span className="uppercase tracking-wider">AUTO COURIER VERIFICATION PROFILE</span>
               </CardTitle>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-2.5 py-1 flex items-center space-x-1">
-                <CheckCircle className="h-3.5 w-3.5" />
-                <span>Verified Delivery Courier</span>
-              </Badge>
+              <div className="flex items-center space-x-2">
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-2.5 py-1 flex items-center space-x-1">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  <span>Verified Delivery Courier</span>
+                </Badge>
+                <Button
+                  onClick={handleApproveClearance}
+                  disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 shadow-lg shadow-emerald-900/30 flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  <span>⚡ Instant Approve Gate Exit</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -314,10 +327,10 @@ export const SecurityGatePage: React.FC = () => {
                     <Button
                       onClick={handleApproveClearance}
                       disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
-                      className="flex items-center space-x-1.5"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 shadow-lg shadow-emerald-900/30 flex items-center space-x-1.5 cursor-pointer"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      <span>Approve Clearance</span>
+                      <span>⚡ Approve Clearance (Instant 1-Click)</span>
                     </Button>
                   </div>
                 </CardContent>

@@ -301,9 +301,11 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   // Find scanned products in Database
   const scannedProducts = await Product.find({
     $or: [
+      { _id: { $in: scannedProductQrs } },
       { qrCode: { $in: scannedProductQrs } },
       { serialNumber: { $in: scannedProductQrs } },
       { productId: { $in: scannedProductQrs } },
+      { imei: { $in: scannedProductQrs } },
       { rfidTag: { $in: scannedProductQrs } }
     ]
   });
