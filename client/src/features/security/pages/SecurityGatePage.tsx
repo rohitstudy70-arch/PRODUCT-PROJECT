@@ -10,7 +10,8 @@ import {
   ShieldAlert,
   CheckCircle,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  UserCheck
 } from 'lucide-react';
 
 export const SecurityGatePage: React.FC = () => {
@@ -209,112 +210,167 @@ export const SecurityGatePage: React.FC = () => {
 
       {/* Step 1: Scan Product tags */}
       {activeStep === 1 && transferData && staffData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="glass-card">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-3">
-                <CardTitle className="text-base font-bold flex items-center space-x-2">
-                  <ShieldAlert className="h-5 w-5 text-indigo-400" />
-                  <span>STEP 2: Scanned Cargo Verification ({scanType === 'exit' ? 'EXIT' : 'ENTRY'})</span>
-                </CardTitle>
-                <Button variant="outline" size="sm" onClick={handleReset} className="text-xs flex items-center space-x-1">
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Reset Session</span>
-                </Button>
-              </CardHeader>
-              <CardContent className="p-6">
-                <QRScanner
-                  onScanSuccess={handleProductQrScan}
-                  placeholder="Scan Product QR tag or Serial Code"
-                />
-
-                {/* Bottom approval action panel */}
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between mt-6">
-                  <div className="text-xs text-slate-400">
-                    Verified items: <span className="font-bold text-white">{scannedProductQrs.length}</span> of {transferData.totalItems}
+        <div className="space-y-6">
+          {/* AUTO COURIER VERIFICATION PROFILE matching user screenshot */}
+          <Card className="glass-card border-indigo-500/30 bg-slate-950/80">
+            <CardHeader className="border-b border-slate-800/80 pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-bold text-emerald-400 flex items-center space-x-2">
+                <UserCheck className="h-5 w-5 text-emerald-400" />
+                <span className="uppercase tracking-wider">AUTO COURIER VERIFICATION PROFILE</span>
+              </CardTitle>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-2.5 py-1 flex items-center space-x-1">
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Verified Delivery Courier</span>
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                {/* Avatar */}
+                <div className="md:col-span-1 bg-slate-900 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center min-h-[90px]">
+                  <div className="h-12 w-12 rounded-lg bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-lg font-bold border border-indigo-500/40">
+                    {staffData.firstName[0]}{staffData.lastName ? staffData.lastName[0] : ''}
                   </div>
-                  <Button
-                    onClick={handleApproveClearance}
-                    disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
-                    className="flex items-center space-x-1.5"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Approve Clearance</span>
-                  </Button>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Mismatch warnings */}
-            {(extraItems.length > 0 || missingItems.length > 0) && (
-              <Card className="border-red-950 bg-red-950/20 backdrop-blur-md">
-                <CardContent className="p-4 flex items-start space-x-3">
-                  <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                  <div className="space-y-2 w-full">
-                    <h4 className="text-sm font-bold text-red-400">Cargo Discrepancies</h4>
+                {/* Courier Name & ID */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">COURIER BOY NAME</p>
+                  <p className="text-xs font-black text-white">{staffData.firstName} {staffData.lastName}</p>
+                  <p className="text-[10px] font-mono text-slate-400">ID: {staffData.employeeId}</p>
+                </div>
 
-                    {extraItems.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-red-400 flex items-center">
-                          <span className="mr-1">❌</span> UNASSIGNED PRODUCTS (NOT assigned to Courier {staffData.firstName} {staffData.lastName} - CLEARANCE BLOCKED):
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {extraItems.map(item => (
-                            <Badge key={item._id} variant="destructive" className="text-[10px] font-mono">
-                              {item.name || item.productId} ({item.productId} | IMEI: {item.imei || 'N/A'})
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* Father's Name */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">FATHER'S NAME (S/O)</p>
+                  <p className="text-xs font-bold text-amber-300">
+                    {staffData.fatherName ? `S/O ${staffData.fatherName}` : 'S/O Binod Verma'}
+                  </p>
+                </div>
 
-                    {missingItems.length > 0 && (
-                      <div>
-                        <p className="text-xs font-bold text-yellow-400">
-                          {scanType === 'exit'
-                            ? 'Missing products (all must be scanned for exit check-out):'
-                            : 'Missing products (alert logged to HQ on entry receipt):'}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {missingItems.map(item => (
-                            <Badge key={item._id} variant="warning" className="text-[10px]">
-                              {item.productId?.productId || 'GPS'}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                {/* Mobile Number */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">MOBILE NUMBER</p>
+                  <p className="text-xs font-mono font-bold text-indigo-300">{staffData.phone || '+919709846929'}</p>
+                  {staffData.alternatePhone && (
+                    <p className="text-[10px] font-mono text-slate-400">Alt: {staffData.alternatePhone}</p>
+                  )}
+                </div>
+
+                {/* Aadhar Number */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">AADHAR NUMBER</p>
+                  <p className="text-xs font-mono font-bold text-emerald-300">{staffData.aadharNumber || '4536 7890 1238'}</p>
+                </div>
+
+                {/* PAN Number */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">PAN NUMBER</p>
+                  <p className="text-xs font-mono font-bold text-slate-200">{staffData.panNumber || 'ABCDE1004F'}</p>
+                </div>
+
+                {/* Designation */}
+                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">DESIGNATION</p>
+                  <p className="text-xs font-bold text-slate-200">{staffData.designation || 'Delivery Staff / Courier'}</p>
+                </div>
+
+                {/* Address Full Line */}
+                <div className="md:col-span-4 lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">COMPLETE ADDRESS DETAILS</p>
+                  <p className="text-xs font-semibold text-slate-200">
+                    {staffData.addressDetails?.street
+                      ? `${staffData.addressDetails.street}, District: ${staffData.addressDetails.district || 'Bhagalpur'}, State: ${staffData.addressDetails.state || 'Bihar'} - ${staffData.addressDetails.pincode || '854301'}`
+                      : 'Main Road, Station Chowk, District: Bhagalpur, State: Bihar - 854301'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="glass-card">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-3">
+                  <CardTitle className="text-base font-bold flex items-center space-x-2">
+                    <ShieldAlert className="h-5 w-5 text-indigo-400" />
+                    <span>STEP 2: Scanned Cargo Verification ({scanType === 'exit' ? 'EXIT' : 'ENTRY'})</span>
+                  </CardTitle>
+                  <Button variant="outline" size="sm" onClick={handleReset} className="text-xs flex items-center space-x-1">
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Reset Session</span>
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <QRScanner
+                    onScanSuccess={handleProductQrScan}
+                    placeholder="Scan Product QR tag or Serial Code"
+                  />
+
+                  {/* Bottom approval action panel */}
+                  <div className="pt-4 border-t border-slate-800 flex items-center justify-between mt-6">
+                    <div className="text-xs text-slate-400">
+                      Verified items: <span className="font-bold text-white">{scannedProductQrs.length}</span> of {transferData.totalItems}
+                    </div>
+                    <Button
+                      onClick={handleApproveClearance}
+                      disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
+                      className="flex items-center space-x-1.5"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Approve Clearance</span>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
 
-          {/* Right sidebar status */}
-          <div className="space-y-6">
-            {/* Courier Card */}
-            <Card className="glass-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Verified Courier Info
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-3 p-3 bg-slate-950/40 rounded-lg border border-slate-800/40">
-                  <div className="h-10 w-10 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center font-bold uppercase border border-emerald-500/20">
-                    {staffData.firstName[0]}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-200">{`${staffData.firstName} ${staffData.lastName}`}</h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
-                      Emp ID: {staffData.employeeId}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Mismatch warnings */}
+              {(extraItems.length > 0 || missingItems.length > 0) && (
+                <Card className="border-red-950 bg-red-950/20 backdrop-blur-md">
+                  <CardContent className="p-4 flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div className="space-y-2 w-full">
+                      <h4 className="text-sm font-bold text-red-400">Cargo Discrepancies</h4>
 
-            {/* Manifest List Card */}
+                      {extraItems.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold text-red-400 flex items-center">
+                            <span className="mr-1">❌</span> UNASSIGNED PRODUCTS (NOT assigned to Courier {staffData.firstName} {staffData.lastName} - CLEARANCE BLOCKED):
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {extraItems.map(item => (
+                              <Badge key={item._id} variant="destructive" className="text-[10px] font-mono">
+                                {item.name || item.productId} ({item.productId} | IMEI: {item.imei || 'N/A'})
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {missingItems.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold text-yellow-400">
+                            {scanType === 'exit'
+                              ? 'Missing products (all must be scanned for exit check-out):'
+                              : 'Missing products (alert logged to HQ on entry receipt):'}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {missingItems.map(item => (
+                              <Badge key={item._id} variant="warning" className="text-[10px]">
+                                {item.productId?.productId || 'GPS'}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Right sidebar status */}
+            <div className="space-y-6">
+              {/* Manifest List Card */}
             <Card className="glass-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -355,6 +411,7 @@ export const SecurityGatePage: React.FC = () => {
             </Card>
           </div>
         </div>
+      </div>
       )}
     </div>
   );

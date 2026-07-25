@@ -56,6 +56,17 @@ export const StaffListPage: React.FC = () => {
   const [role, setRole] = useState<'super_admin' | 'branch_admin' | 'store_manager' | 'security_guard' | 'staff'>('staff');
   const [branchId, setBranchId] = useState('');
   const [rfidCard, setRfidCard] = useState('');
+  
+  // Courier Verification Profile fields matching user screenshot
+  const [fatherName, setFatherName] = useState('');
+  const [alternatePhone, setAlternatePhone] = useState('');
+  const [aadharNumber, setAadharNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
+  const [designation, setDesignation] = useState('Delivery Staff / Courier');
+  const [street, setStreet] = useState('');
+  const [district, setDistrict] = useState('');
+  const [stateName, setStateName] = useState('Bihar');
+  const [pincode, setPincode] = useState('');
 
   const { user } = useAuthStore();
 
@@ -92,19 +103,37 @@ export const StaffListPage: React.FC = () => {
     setRole('staff');
     setBranchId('');
     setRfidCard('');
+    setFatherName('');
+    setAlternatePhone('');
+    setAadharNumber('');
+    setPanNumber('');
+    setDesignation('Delivery Staff / Courier');
+    setStreet('');
+    setDistrict('');
+    setStateName('Bihar');
+    setPincode('');
     setModalOpen(true);
   };
 
-  const handleEditStaff = (staff: Staff) => {
+  const handleEditStaff = (staff: any) => {
     setSelectedStaff(staff);
-    setFirstName(staff.firstName);
-    setLastName(staff.lastName);
-    setEmail(staff.email);
+    setFirstName(staff.firstName || '');
+    setLastName(staff.lastName || '');
+    setEmail(staff.email || '');
     setPassword('');
     setPhone(staff.phone || '');
     setRole(staff.role as any);
     setBranchId(staff.branchId?._id || '');
-    setRfidCard((staff as any).rfidCard || '');
+    setRfidCard(staff.rfidCard || '');
+    setFatherName(staff.fatherName || '');
+    setAlternatePhone(staff.alternatePhone || '');
+    setAadharNumber(staff.aadharNumber || '');
+    setPanNumber(staff.panNumber || '');
+    setDesignation(staff.designation || 'Delivery Staff / Courier');
+    setStreet(staff.addressDetails?.street || '');
+    setDistrict(staff.addressDetails?.district || '');
+    setStateName(staff.addressDetails?.state || 'Bihar');
+    setPincode(staff.addressDetails?.pincode || '');
     setModalOpen(true);
   };
 
@@ -125,6 +154,17 @@ export const StaffListPage: React.FC = () => {
         role,
         branchId: branchId || null,
         rfidCard: rfidCard || null,
+        fatherName,
+        alternatePhone,
+        aadharNumber,
+        panNumber,
+        designation,
+        addressDetails: {
+          street,
+          district,
+          state: stateName,
+          pincode
+        },
         ...(password ? { password } : {})
       };
 
@@ -387,7 +427,53 @@ export const StaffListPage: React.FC = () => {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-400">Mobile Phone</label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+919876543213" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+919709846929" />
+            </div>
+          </div>
+
+          {/* Courier Verification Profile Fields matching screenshot */}
+          <div className="border border-indigo-500/20 bg-slate-950/60 rounded-xl p-3.5 space-y-3">
+            <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+              <span>👤</span>
+              <span>Courier Verification Profile Details</span>
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-amber-400">Father's Name (S/O)</label>
+                <Input value={fatherName} onChange={(e) => setFatherName(e.target.value)} placeholder="e.g. Binod Verma" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Alternate Mobile Number</label>
+                <Input value={alternatePhone} onChange={(e) => setAlternatePhone(e.target.value)} placeholder="e.g. 9812310004" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-emerald-400">Aadhar Card Number</label>
+                <Input value={aadharNumber} onChange={(e) => setAadharNumber(e.target.value)} placeholder="e.g. 4536 7890 1238" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">PAN Card Number</label>
+                <Input value={panNumber} onChange={(e) => setPanNumber(e.target.value)} placeholder="e.g. ABCDE1004F" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Designation / Role Title</label>
+              <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. Delivery Staff / Courier" />
+            </div>
+
+            {/* Complete Address Details */}
+            <div className="space-y-2 pt-1 border-t border-slate-800/80">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Complete Address Details</label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Street / Main Road / Station Chowk" className="col-span-2 text-xs" />
+                <Input value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="District (e.g. Bhagalpur)" className="text-xs" />
+                <Input value={stateName} onChange={(e) => setStateName(e.target.value)} placeholder="State (e.g. Bihar)" className="text-xs" />
+                <Input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="Pincode (e.g. 854301)" className="col-span-2 text-xs" />
+              </div>
             </div>
           </div>
 
@@ -406,7 +492,7 @@ export const StaffListPage: React.FC = () => {
                 onChange={(e: any) => setRole(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
               >
-                <option value="staff">Courier Courier/Staff</option>
+                <option value="staff">Delivery Staff / Courier</option>
                 <option value="security_guard">Security Guard Scanner</option>
                 <option value="store_manager">Store Room Manager</option>
                 <option value="branch_admin">Branch Administrator</option>

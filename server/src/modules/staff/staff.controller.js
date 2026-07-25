@@ -8,7 +8,21 @@ import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js'
 import crypto from 'crypto';
 
 export const createStaff = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password, phone, role, branchId } = req.body;
+  const { 
+    firstName, 
+    lastName, 
+    email, 
+    password, 
+    phone, 
+    role, 
+    branchId,
+    fatherName,
+    alternatePhone,
+    aadharNumber,
+    panNumber,
+    designation,
+    addressDetails
+  } = req.body;
 
   if (!firstName || !lastName || !email || !password || !role) {
     throw new ApiError(400, 'First name, last name, email, password, and role are required');
@@ -40,7 +54,13 @@ export const createStaff = asyncHandler(async (req, res) => {
     email,
     password,
     phone,
-    role
+    role,
+    fatherName: fatherName || '',
+    alternatePhone: alternatePhone || '',
+    aadharNumber: aadharNumber || '',
+    panNumber: panNumber || '',
+    designation: designation || (role === 'staff' ? 'Delivery Staff / Courier' : role.replace('_', ' ').toUpperCase()),
+    addressDetails: addressDetails || { street: '', district: '', state: '', pincode: '' }
   });
 
   const response = staff.toObject();
@@ -63,7 +83,9 @@ export const getAllStaff = asyncHandler(async (req, res) => {
       { firstName: { $regex: search, $options: 'i' } },
       { lastName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } },
-      { employeeId: { $regex: search, $options: 'i' } }
+      { employeeId: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } },
+      { aadharNumber: { $regex: search, $options: 'i' } }
     ];
   }
 
@@ -95,7 +117,20 @@ export const getStaffById = asyncHandler(async (req, res) => {
 });
 
 export const updateStaff = asyncHandler(async (req, res) => {
-  const { firstName, lastName, phone, status } = req.body;
+  const { 
+    firstName, 
+    lastName, 
+    phone, 
+    status,
+    fatherName,
+    alternatePhone,
+    aadharNumber,
+    panNumber,
+    designation,
+    addressDetails,
+    role,
+    branchId
+  } = req.body;
 
   const staff = await Staff.findById(req.params.id);
   if (!staff) {
@@ -106,6 +141,14 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (lastName) staff.lastName = lastName;
   if (phone) staff.phone = phone;
   if (status) staff.status = status;
+  if (fatherName !== undefined) staff.fatherName = fatherName;
+  if (alternatePhone !== undefined) staff.alternatePhone = alternatePhone;
+  if (aadharNumber !== undefined) staff.aadharNumber = aadharNumber;
+  if (panNumber !== undefined) staff.panNumber = panNumber;
+  if (designation !== undefined) staff.designation = designation;
+  if (role) staff.role = role;
+  if (branchId !== undefined) staff.branchId = branchId || null;
+  if (addressDetails) staff.addressDetails = addressDetails;
 
   await staff.save();
 
