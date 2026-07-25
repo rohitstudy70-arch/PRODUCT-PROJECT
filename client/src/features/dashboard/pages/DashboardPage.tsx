@@ -43,6 +43,7 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuthStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [transfers, setTransfers] = useState<any[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // IMEI Search & Sliding Panel States
@@ -64,6 +65,11 @@ export const DashboardPage: React.FC = () => {
         // Guard or Staff member: load transfers list instead (avoids 403)
         const response = await api.get('/transfers', { params: { limit: 100 } });
         setTransfers(response.data.data || []);
+
+        if (user.role === 'security_guard') {
+          const scansRes = await api.get('/security/scans', { params: { limit: 20 } });
+          setHistoryLogs(scansRes.data.data || []);
+        }
       }
     } catch (err) {
       console.error('Error fetching dashboard statistics', err);
@@ -152,6 +158,118 @@ export const DashboardPage: React.FC = () => {
             </Link>
           </Card>
         </div>
+
+        {/* SECURITY GUARD PERSONAL APPROVAL HISTORY LOG */}
+        <Card className="glass-card border-indigo-500/20 bg-slate-950/70 mt-6">
+          <CardHeader className="border-b border-slate-800/80 pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <span>MY APPROVED CLEARANCE HISTORY LOG (सुरक्षा गार्ड अप्रूवल रिकॉर्ड लॉग)</span>
+            </CardTitle>
+            <Badge variant="outline" className="text-xs font-mono border-slate-700 text-slate-300">
+              Total Approved Logs: {historyLogs.length}
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-4">
+            {historyLogs.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No security clearance approvals recorded by officer {user.firstName} {user.lastName} yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-3">Approval Date & Time</th>
+                      <th className="py-2.5 px-3">Courier / Staff Approved</th>
+                      <th className="py-2.5 px-3">Approved Products</th>
+                      <th className="py-2.5 px-3">Transfer Route</th>
+                      <th className="py-2.5 px-3">Gate & Type</th>
+                      <th className="py-2.5 px-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                    {historyLogs.map((log: any) => {
+                      const staffObj = log.staffQR?.staffId;
+                      const transferObj = log.transferId;
+                      const productsList = log.productsScanned || [];
+
+                      return (
+                        <tr key={log._id} className="hover:bg-slate-900/50 transition-colors">
+                          {/* Date & Time */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <p className="font-bold text-slate-200">
+                              {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </p>
+                          </td>
+
+                          {/* Courier / Staff Name */}
+                          <td className="py-3 px-3">
+                            {staffObj ? (
+                              <div>
+                                <p className="font-black text-amber-300">
+                                  {staffObj.firstName} {staffObj.lastName}
+                                </p>
+                                <p className="text-[10px] font-mono text-slate-400">
+                                  ID: {staffObj.employeeId || 'N/A'} {staffObj.fatherName ? `| S/O ${staffObj.fatherName}` : ''}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-slate-500 font-mono">N/A</span>
+                            )}
+                          </td>
+
+                          {/* Approved Products */}
+                          <td className="py-3 px-3 max-w-xs">
+                            {productsList.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {productsList.map((item: any, idx: number) => {
+                                  const prod = item.productId || {};
+                                  return (
+                                    <Badge key={idx} className="bg-slate-900 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono">
+                                      {prod.name || item.productQR} ({prod.productId || 'N/A'} {prod.imei ? `| IMEI:${prod.imei}` : ''})
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[11px]">Manifest Payload Items</span>
+                            )}
+                          </td>
+
+                          {/* Route / Transfer ID */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <p className="font-mono font-bold text-indigo-400">
+                              {transferObj?.transferId || 'N/A'}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              {transferObj?.fromBranchId?.name || 'HO'} ➔ {transferObj?.toBranchId?.name || 'Branch'}
+                            </p>
+                          </td>
+
+                          {/* Gate & Type */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <Badge variant="outline" className={`text-[10px] ${log.type === 'exit' ? 'border-amber-500/40 text-amber-300' : 'border-blue-500/40 text-blue-300'}`}>
+                              {log.gateNumber || 'Gate 1'} ({log.type === 'exit' ? 'EXIT Check-Out' : 'ENTRY Check-In'})
+                            </Badge>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-[10px]">
+                              ✓ Approved & Cleared
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
