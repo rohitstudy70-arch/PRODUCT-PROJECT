@@ -52,21 +52,21 @@ export const SecurityGatePage: React.FC = () => {
   };
 
   const handleProductQrScan = async (scannedCode: string) => {
-    if (!transferData) return;
+    if (!transferData || !staffData) return;
 
     if (scannedProductQrs.includes(scannedCode)) {
-      toast.warning('Tag has already been scanned');
+      toast.warning('Tag or barcode has already been scanned in this session');
       return;
     }
 
     try {
       const prodRes = await api.get('/products', { params: { limit: 100 } });
       const matchedProduct = prodRes.data.data.find(
-        (p: any) => p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode
+        (p: any) => p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p.imei === scannedCode
       );
 
       if (!matchedProduct) {
-        toast.error('Scanned tag is not registered in catalog');
+        toast.error(`❌ UNREGISTERED PRODUCT ERROR: Tag/code "${scannedCode}" is not registered in ERP catalog!`);
         return;
       }
 
@@ -76,9 +76,11 @@ export const SecurityGatePage: React.FC = () => {
       const updatedProds = [...scannedProducts, matchedProduct];
       setScannedProducts(updatedProds);
 
-      // Recalculate discrepancies
+      // Recalculate discrepancies against assigned transfer manifest
       const manifestProductIds = transferData.items.map((i: any) => i.productId._id);
       const scannedProductIds = updatedProds.map(p => p._id);
+
+      const isAssignedToThisCourier = manifestProductIds.includes(matchedProduct._id);
 
       const missing = transferData.items.filter((i: any) => !scannedProductIds.includes(i.productId._id));
       setMissingItems(missing);
@@ -86,10 +88,13 @@ export const SecurityGatePage: React.FC = () => {
       const extra = updatedProds.filter(p => !manifestProductIds.includes(p._id));
       setExtraItems(extra);
 
-      if (extra.length > 0) {
-        toast.error(`Mismatch Detected: Product ${matchedProduct.productId} not on manifest!`);
+      if (!isAssignedToThisCourier) {
+        toast.error(
+          `❌ PRODUCT MISMATCH ERROR: Product "${matchedProduct.name}" (${matchedProduct.productId} | IMEI/SN: ${matchedProduct.imei || matchedProduct.serialNumber || 'N/A'}) is NOT assigned to Courier ${staffData.firstName} ${staffData.lastName} for Transfer ${transferData.transferId}!`,
+          { duration: 6000 }
+        );
       } else {
-        toast.success(`Verified: ${matchedProduct.productId}`);
+        toast.success(`✅ VERIFIED MATCH: Product "${matchedProduct.name}" (${matchedProduct.productId}) verified for Courier ${staffData.firstName} ${staffData.lastName}`);
       }
     } catch (err) {
       toast.error('Error scanning product tag');
@@ -250,11 +255,13 @@ export const SecurityGatePage: React.FC = () => {
 
                     {extraItems.length > 0 && (
                       <div>
-                        <p className="text-xs font-bold text-red-300">Extra products (NOT in manifest, blocked):</p>
+                        <p className="text-xs font-bold text-red-400 flex items-center">
+                          <span className="mr-1">❌</span> UNASSIGNED PRODUCTS (NOT assigned to Courier {staffData.firstName} {staffData.lastName} - CLEARANCE BLOCKED):
+                        </p>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {extraItems.map(item => (
-                            <Badge key={item._id} variant="destructive" className="text-[10px]">
-                              {item.productId}
+                            <Badge key={item._id} variant="destructive" className="text-[10px] font-mono">
+                              {item.name || item.productId} ({item.productId} | IMEI: {item.imei || 'N/A'})
                             </Badge>
                           ))}
                         </div>

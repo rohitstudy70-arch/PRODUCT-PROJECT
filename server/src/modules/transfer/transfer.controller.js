@@ -184,12 +184,13 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
       { qrCode: productQrCode },
       { serialNumber: productQrCode },
       { productId: productQrCode },
+      { imei: productQrCode },
       { rfidTag: productQrCode }
     ]
   });
 
   if (!product) {
-    throw new ApiError(404, 'Product not registered in ERP');
+    throw new ApiError(404, `❌ ERROR: Product with code "${productQrCode}" is not registered in ERP catalog`);
   }
 
   // Find if this product belongs to the transfer
@@ -199,7 +200,7 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
   });
 
   if (!transferItem) {
-    throw new ApiError(400, `Scanned product ${product.productId} is not part of this transfer manifest`);
+    throw new ApiError(400, `❌ PRODUCT MISMATCH ERROR: Scanned product "${product.name}" (${product.productId} | IMEI/SN: ${product.imei || product.serialNumber || 'N/A'}) is NOT assigned to this transfer manifest!`);
   }
 
   if (transferItem.status === 'scanned') {
