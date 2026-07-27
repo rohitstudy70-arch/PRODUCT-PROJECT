@@ -31,21 +31,33 @@ export const BranchReceivingPage: React.FC = () => {
     }
   };
 
-  const fetchTransfersForBranch = async () => {
-    if (!selectedBranchId) return;
+  const getEffectiveBranchId = () => {
+    if (selectedBranchId) return selectedBranchId;
+    if (user?.role !== 'super_admin') {
+      const assignedBranchId = typeof user?.branchId === 'object' ? (user?.branchId as any)?._id : user?.branchId;
+      if (assignedBranchId) return assignedBranchId.toString();
+    }
+    if (branches.length > 0) return branches[0]._id.toString();
+    return '';
+  };
+
+  const fetchTransfersForBranch = async (branchIdOverride?: string) => {
+    const targetBranchId = branchIdOverride || selectedBranchId || getEffectiveBranchId();
+    if (!targetBranchId) return;
+
     try {
       const response = await api.get('/transfers', { params: { limit: 100 } });
       const allTransfers = response.data.data;
       
       // Filter incoming in-transit
       const incoming = allTransfers.filter(
-        (t: any) => t.toBranchId?._id === selectedBranchId && t.status === 'in_transit'
+        (t: any) => (t.toBranchId?._id === targetBranchId || t.toBranchId === targetBranchId) && t.status === 'in_transit'
       );
       setIncomingTransfers(incoming);
 
       // Filter received history
       const history = allTransfers.filter(
-        (t: any) => t.toBranchId?._id === selectedBranchId && t.status === 'received'
+        (t: any) => (t.toBranchId?._id === targetBranchId || t.toBranchId === targetBranchId) && t.status === 'received'
       );
       setReceivedHistory(history);
     } catch (err) {
@@ -59,35 +71,37 @@ export const BranchReceivingPage: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      if (user.role !== 'super_admin') {
-        const assignedBranchId = (user.branchId as any)?._id || (user.branchId as any);
-        if (assignedBranchId) {
-          setSelectedBranchId(assignedBranchId);
-        }
+      const assignedBranchId = typeof user?.branchId === 'object' ? (user?.branchId as any)?._id : user?.branchId;
+      if (user.role !== 'super_admin' && assignedBranchId) {
+        setSelectedBranchId(assignedBranchId.toString());
       } else if (branches.length > 0 && !selectedBranchId) {
-        setSelectedBranchId(branches[0]._id);
+        setSelectedBranchId(branches[0]._id.toString());
       }
     }
-  }, [user, branches, selectedBranchId]);
+  }, [user, branches]);
 
   useEffect(() => {
-    fetchTransfersForBranch();
-  }, [selectedBranchId]);
+    const targetId = selectedBranchId || getEffectiveBranchId();
+    if (targetId) {
+      fetchTransfersForBranch(targetId);
+    }
+  }, [selectedBranchId, branches]);
 
   const handleConfirmArrival = async (scannedCode: string) => {
-    if (!selectedBranchId) {
-      toast.error('Please select a branch first');
+    const targetBranchId = selectedBranchId || getEffectiveBranchId();
+    if (!targetBranchId) {
+      toast.error('Please select a receiving branch first');
       return;
     }
 
     try {
       const response = await api.post('/transfers/confirm-arrival', {
         staffQrCode: scannedCode.trim(),
-        toBranchId: selectedBranchId
+        toBranchId: targetBranchId
       });
       
-      toast.success(response.data.message);
-      fetchTransfersForBranch();
+      toast.success(response.data.message || 'Arrival confirmed & stock received successfully!');
+      fetchTransfersForBranch(targetBranchId);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to confirm arrival');
     }
@@ -117,13 +131,13 @@ export const BranchReceivingPage: React.FC = () => {
                 <label className="text-xs font-semibold text-slate-400">Current Receiving Branch</label>
                 {user?.role === 'super_admin' ? (
                   <select
-                    value={selectedBranchId}
+                    value={selectedBranchId || getEffectiveBranchId()}
                     onChange={(e) => setSelectedBranchId(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"
+                    className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 font-semibold"
                   >
                     <option value="">Select branch...</option>
                     {branches.map(b => (
-                      <option key={b._id} value={b._id}>{b.name}</option>
+                      <option key={b._id} value={b._id}>{b.name} ({b.code})</option>
                     ))}
                   </select>
                 ) : (
@@ -188,6 +202,20 @@ export const BranchReceivingPage: React.FC = () => {
                         <p><span className="font-semibold">Origin:</span> {t.fromBranchId?.name}</p>
                         <p><span className="font-semibold">Items:</span> {t.totalItems} devices</p>
                       </div>
+                      <button
+                        onClick={() => {
+                          const staffCode = t.assignedStaffId?.qrCode || t.assignedStaffId?.employeeId || '';
+                          if (staffCode) {
+                            handleConfirmArrival(staffCode);
+                          } else {
+                            toast.error('Courier Staff QR not found for this transfer');
+                          }
+                        }}
+                        className="w-full mt-2 py-1.5 px-3 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] rounded flex items-center justify-center space-x-1 transition-colors cursor-pointer"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        <span>Instant Confirm & Receive Stock</span>
+                      </button>
                     </div>
                   ))
                 )}
