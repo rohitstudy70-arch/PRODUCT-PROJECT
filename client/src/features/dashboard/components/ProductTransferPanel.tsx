@@ -36,6 +36,7 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
   const [remarks, setRemarks] = useState('');
   const [historyTimeline, setHistoryTimeline] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeCourierStaff, setActiveCourierStaff] = useState<any | null>(null);
 
   // Transfer Confirmation Modal
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -45,6 +46,7 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
   // Fetch branches and staff
   useEffect(() => {
     if (isOpen && product) {
+      setActiveCourierStaff(null);
       fetchBranches();
       fetchStaff();
       fetchHistory();
@@ -82,7 +84,14 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
     setLoadingHistory(true);
     try {
       const res = await api.get(`/products/${product._id}/history`);
-      setHistoryTimeline(res.data?.data || []);
+      const historyData = res.data?.data || [];
+      setHistoryTimeline(historyData);
+
+      // Extract active courier staff from history if available
+      const latestStaffRecord = historyData.find((h: any) => h.staffId && typeof h.staffId === 'object');
+      if (latestStaffRecord) {
+        setActiveCourierStaff(latestStaffRecord.staffId);
+      }
     } catch (err) {
       console.error('Failed to load product history:', err);
     } finally {
@@ -383,6 +392,58 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                     </p>
                   </div>
                 </div>
+
+                {/* ASSIGNED COURIER BOY / DELIVERY STAFF CARD */}
+                {(product.currentHolderId || activeCourierStaff) ? (
+                  <div className="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between border-b border-indigo-500/30 pb-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center">
+                        <UserCheck className="h-4 w-4 mr-1.5 text-indigo-400" />
+                        Assigned Courier Boy / Delivery Staff
+                      </p>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px]">
+                        Active Carrier
+                      </Badge>
+                    </div>
+
+                    {(() => {
+                      const courier = product.currentHolderId || activeCourierStaff;
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Courier Name</span>
+                            <span className="font-bold text-slate-100">{courier.firstName} {courier.lastName}</span>
+                            <span className="text-[10px] text-indigo-400 font-mono block">Emp ID: {courier.employeeId || 'N/A'}</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Mobile Phone</span>
+                            <span className="font-mono font-bold text-emerald-400">{courier.phone || 'N/A'}</span>
+                            {courier.fatherName && (
+                              <span className="text-[10px] text-slate-400 block truncate">S/O {courier.fatherName}</span>
+                            )}
+                          </div>
+
+                          <div className="col-span-2 sm:col-span-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">Duty Status</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded inline-block mt-0.5 ${
+                              courier.dutyStatus === 'ON_DUTY' 
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
+                                : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {courier.dutyStatus === 'ON_DUTY' ? '⚡ LIVE ON DUTY' : 'OFF DUTY'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 text-xs italic flex items-center space-x-2">
+                    <UserCheck className="h-4 w-4 text-slate-500 shrink-0" />
+                    <span>No specific courier boy assigned yet. Select courier boy below to initiate transfer.</span>
+                  </div>
+                )}
               </div>
 
               {/* SECTION 3: INITIATE PRODUCT TRANSFER FORM */}
