@@ -5,16 +5,23 @@ import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { ROUTES } from '../../../config/routes';
-import api from '../../../config/api';
+import api, { getStoredServerUrl, updateApiBaseUrl } from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Mail, Lock, LogIn, Server, Wifi } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [serverUrl, setServerUrl] = useState(getStoredServerUrl());
   const { setAuth } = useAuthStore();
   const navigate = useNavigate();
+
+  const handleServerChange = (newUrl: string) => {
+    setServerUrl(newUrl);
+    updateApiBaseUrl(newUrl);
+    toast.success(`Server switched to: ${newUrl.includes('192.168') ? 'Local Wi-Fi PC Server' : 'Cloud Render Server'}`);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +61,7 @@ export const LoginPage: React.FC = () => {
             Sign in with your enterprise credentials
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-400">Email Address</label>
@@ -97,6 +104,49 @@ export const LoginPage: React.FC = () => {
               <span>Sign In</span>
             </Button>
           </form>
+
+          {/* Server Connection Selector */}
+          <div className="pt-3 border-t border-slate-800/80">
+            <label className="text-[11px] font-semibold text-slate-400 flex items-center justify-between mb-1.5">
+              <span className="flex items-center space-x-1">
+                <Server className="h-3 w-3 text-indigo-400" />
+                <span>Backend Server Connection</span>
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => handleServerChange('https://product-project-wmc4.onrender.com/api/v1')}
+                className={`p-2 rounded-lg border text-left transition-all ${
+                  serverUrl.includes('onrender')
+                    ? 'bg-indigo-950/60 border-indigo-500/80 text-indigo-200'
+                    : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold flex items-center space-x-1 text-[11px]">
+                  <Server className="h-3 w-3" />
+                  <span>Cloud Server</span>
+                </div>
+                <div className="text-[9px] text-slate-400 truncate mt-0.5">Render Cloud</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleServerChange('http://192.168.1.101:5000/api/v1')}
+                className={`p-2 rounded-lg border text-left transition-all ${
+                  serverUrl.includes('192.168')
+                    ? 'bg-indigo-950/60 border-indigo-500/80 text-indigo-200'
+                    : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold flex items-center space-x-1 text-[11px]">
+                  <Wifi className="h-3 w-3 text-emerald-400" />
+                  <span>Local Wi-Fi PC</span>
+                </div>
+                <div className="text-[9px] text-slate-400 truncate mt-0.5">192.168.1.101</div>
+              </button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </>

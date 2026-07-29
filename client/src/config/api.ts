@@ -1,13 +1,25 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+export const getStoredServerUrl = () => {
+  const customUrl = localStorage.getItem('custom_server_url');
+  if (customUrl) return customUrl;
+  return (import.meta as any).env?.VITE_API_URL || 'https://product-project-wmc4.onrender.com/api/v1';
+};
+
 const api = axios.create({
-  baseURL: (import.meta as any).env.VITE_API_URL || 'https://product-project-wmc4.onrender.com/api/v1',
+  baseURL: getStoredServerUrl(),
+  timeout: 60000, // 60s timeout for Render cold starts
   headers: {
     'Content-Type': 'application/json'
   },
   withCredentials: true
 });
+
+export const updateApiBaseUrl = (newUrl: string) => {
+  api.defaults.baseURL = newUrl;
+  localStorage.setItem('custom_server_url', newUrl);
+};
 
 // Request Interceptor: Attach bearer token
 api.interceptors.request.use(
