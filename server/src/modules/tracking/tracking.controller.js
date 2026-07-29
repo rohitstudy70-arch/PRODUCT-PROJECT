@@ -22,25 +22,31 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Helper function to resolve IP address location fallback
+// Helper function to resolve IP address location fallback (Cellular Data & Wi-Fi Networks)
 async function resolveIpLocation(ip) {
   try {
-    if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
-      return {
-        latitude: 28.5355,
-        longitude: 77.3910,
-        address: 'Noida Telecom Area (IP Fallback)',
-        isp: 'Local ISP Network'
-      };
-    }
-    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,lat,lon,isp`);
+    let cleanIp = (ip || '').replace(/^::ffff:/, '').trim();
+
+    const isPrivateIp = !cleanIp || 
+      cleanIp.startsWith('127.') || 
+      cleanIp.startsWith('192.168.') || 
+      cleanIp.startsWith('10.') || 
+      cleanIp.startsWith('172.') || 
+      cleanIp === '::1';
+
+    // If on Wi-Fi/Local Network, query ip-api.com without IP parameter to resolve the Wi-Fi router's Public WAN IP
+    const targetUrl = isPrivateIp
+      ? 'http://ip-api.com/json/?fields=status,country,regionName,city,lat,lon,isp,query'
+      : `http://ip-api.com/json/${cleanIp}?fields=status,country,regionName,city,lat,lon,isp,query`;
+
+    const response = await fetch(targetUrl);
     const data = await response.json();
     if (data && data.status === 'success') {
       return {
         latitude: data.lat,
         longitude: data.lon,
         address: `${data.city || data.regionName}, ${data.country} (IP Fallback)`,
-        isp: data.isp || 'Mobile Carrier'
+        isp: `${data.isp || 'Broadband Wi-Fi'} (${isPrivateIp ? 'Wi-Fi' : 'Mobile Data'})`
       };
     }
   } catch (err) {
@@ -49,8 +55,8 @@ async function resolveIpLocation(ip) {
   return {
     latitude: 28.5355,
     longitude: 77.3910,
-    address: 'Noida Transit Hub (IP Fallback)',
-    isp: 'Carrier Gateway'
+    address: 'Noida Telecom Area (Wi-Fi Fallback)',
+    isp: 'Wi-Fi Network'
   };
 }
 
