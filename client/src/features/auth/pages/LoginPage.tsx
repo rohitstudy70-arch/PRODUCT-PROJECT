@@ -37,8 +37,12 @@ export const LoginPage: React.FC = () => {
         navigate(ROUTES.DASHBOARD);
       }, 800);
     } catch (error: any) {
-      const msg = error.response?.data?.message || error.message || 'Login failed. Please verify credentials or network.';
-      toast.error(msg);
+      if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        toast.error('Cloud Server is waking up (takes ~15-20s on first load). Please wait a few seconds and tap Sign In again.', { duration: 6000 });
+      } else {
+        const msg = error.response?.data?.message || error.message || 'Login failed. Please verify credentials or network.';
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }

@@ -8,11 +8,10 @@ localStorage.removeItem('custom_server_url');
 
 const api = axios.create({
   baseURL: (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL,
-  timeout: 60000, // 60s timeout for Render cold starts
+  timeout: 90000, // 90s timeout for Render free tier cold starts
   headers: {
     'Content-Type': 'application/json'
-  },
-  withCredentials: true
+  }
 });
 
 // Request Interceptor: Attach bearer token
@@ -27,7 +26,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle token refresh on 401
+// Response Interceptor: Handle token refresh & auto-retry network errors
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -47,6 +46,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Retry once if network error occurs (Render cold start handling)
+    if ((error.message === 'Network Error' || error.code === 'ERR_NETWORK') && !originalRequest._networkRetry) {
+      originalRequest._networkRetry = true;
+      console.warn('Network error encountered. Server may be cold-starting. Retrying in 2 seconds...');
+      await new Promise(res => setTimeout(res, 2000));
+      return api(originalRequest);
+    }
+
     // Avoid loops on login or retry failures
     if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/login') {
       if (isRefreshing) {
@@ -64,8 +71,8 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const apiUrl = (import.meta as any).env.VITE_API_URL || 'https://product-project-wmc4.onrender.com/api/v1';
-        const refreshResponse = await axios.post(`${apiUrl}/auth/refresh-token`, {}, { withCredentials: true });
+        const apiUrl = (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL;
+        const refreshResponse = await axios.post(`${apiUrl}/auth/refresh-token`, {});
         const { accessToken } = refreshResponse.data.data;
 
         // Update state
