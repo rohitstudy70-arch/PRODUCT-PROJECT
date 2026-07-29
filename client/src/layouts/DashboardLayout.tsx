@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { ROUTES } from '../config/routes';
 import { useUIStore } from '../store/uiStore';
-import gpsTracker from '../services/GPSLocationService';
+import { gpsTracker, requestNativeLocationPermission } from '../services/GPSLocationService';
 import { Dialog } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { MapPin, Navigation, ShieldCheck } from 'lucide-react';
@@ -53,24 +53,20 @@ export const DashboardLayout: React.FC = () => {
   }, [isAuthenticated, user?.dutyStatus, user?.role]);
 
   const handleEnableLocation = async () => {
-    if (!('geolocation' in navigator)) {
-      toast.error('Geolocation is not supported by your browser.');
-      return;
-    }
+    const granted = await requestNativeLocationPermission();
 
-    navigator.geolocation.getCurrentPosition(
-      async () => {
-        toast.success('GPS Location Activated Successfully! Courier Portal Unlocked.');
-        setPermissionGranted(true);
-        setShowLocationModal(false);
-        await gpsTracker.startTracking();
-      },
-      (err) => {
-        console.error('Location permission error:', err);
-        toast.error('GPS Permission Denied / Turned Off! Please enable Location Services in your phone settings to unlock portal.');
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
+    if (granted) {
+      toast.success('GPS Location Activated Successfully! Courier Portal Unlocked.');
+      setPermissionGranted(true);
+      setShowLocationModal(false);
+      await gpsTracker.startTracking();
+    } else {
+      toast.error('GPS Permission Denied / Turned Off! IP Tracking fallback is active.');
+      // Unlock portal with IP fallback mode
+      setPermissionGranted(true);
+      setShowLocationModal(false);
+      await gpsTracker.startTracking();
+    }
   };
 
   // Handle closing sidebar by default on mobile load

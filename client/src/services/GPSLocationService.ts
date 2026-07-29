@@ -1,4 +1,31 @@
 import api from '../config/api';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
+
+export const requestNativeLocationPermission = async (): Promise<boolean> => {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const status = await Geolocation.checkPermissions();
+      if (status.location !== 'granted') {
+        const req = await Geolocation.requestPermissions();
+        return req.location === 'granted';
+      }
+      return true;
+    } else {
+      return new Promise((resolve) => {
+        if (!('geolocation' in navigator)) return resolve(false);
+        navigator.geolocation.getCurrentPosition(
+          () => resolve(true),
+          () => resolve(false),
+          { timeout: 10000 }
+        );
+      });
+    }
+  } catch (err) {
+    console.warn('Native Location permission request error:', err);
+    return false;
+  }
+};
 
 class GPSLocationTracker {
   private watchId: number | null = null;
@@ -8,6 +35,9 @@ class GPSLocationTracker {
 
   public async startTracking(): Promise<boolean> {
     if (this.isTrackingActive) return true;
+
+    // Request native Android location permission prompt
+    await requestNativeLocationPermission();
 
     this.isTrackingActive = true;
 
