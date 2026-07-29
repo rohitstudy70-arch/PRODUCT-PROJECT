@@ -64,12 +64,19 @@ export const LoginPage: React.FC = () => {
       clearTimeout(slowNoticeTimer);
       console.error('Login error:', error);
 
-      // Check if network error or cloud server sleep occurred
+      // If server returned an HTTP status response (e.g. 400, 401, 403, 404, 500), the server IS ALREADY AWAKE!
+      if (error.response) {
+        const msg = error.response.data?.message || error.response.data?.error || `Login failed (${error.response.status}). Check email and password.`;
+        toast.error(msg);
+        return;
+      }
+
+      // Check if network error occurred (no HTTP response received)
       const isNetworkErr = error.message === 'Network Error' || error.code === 'ERR_NETWORK' || !error.response;
 
       // FAST FALLBACK: If user previously logged in on this device, grant instant access!
       if (isNetworkErr && cachedUser && cachedToken) {
-        toast.info('⚡ Cloud server waking up in background. Granting instant session access!');
+        toast.info('⚡ Granting instant session access!');
         setTimeout(() => {
           navigate(ROUTES.DASHBOARD);
         }, 600);
@@ -77,9 +84,20 @@ export const LoginPage: React.FC = () => {
       }
 
       if (isNetworkErr) {
+        // Quick verification: ping server health to check if server is already awake
+        try {
+          const healthRes = await api.get('/health', { timeout: 3000 });
+          if (healthRes.status === 200) {
+            toast.error('Server is awake! Please verify your email & password or check network connection.');
+            return;
+          }
+        } catch (pingErr) {
+          // Health ping failed -> Server is truly sleeping/waking up
+        }
+
         toast.error('Cloud server is waking up (~15s delay). You can switch to Local Server in ⚙️ Settings for instant speed.', { duration: 6000 });
       } else {
-        const msg = error.response?.data?.message || error.message || 'Login failed. Please check credentials.';
+        const msg = error.message || 'Login failed. Please check credentials.';
         toast.error(msg);
       }
     } finally {
