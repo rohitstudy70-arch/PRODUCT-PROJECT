@@ -3,20 +3,22 @@ import { useAuthStore } from '../store/authStore';
 
 export const CLOUD_SERVER_URL = 'https://product-project-wmc4.onrender.com/api/v1';
 
-// Clear any local custom URL overrides so mobile app always connects to Cloud Server
-localStorage.removeItem('custom_server_url');
+export const getBaseURL = () => {
+  return localStorage.getItem('custom_server_url') || (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL;
+};
 
 const api = axios.create({
-  baseURL: (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL,
+  baseURL: getBaseURL(),
   timeout: 90000, // 90s timeout for Render free tier cold starts
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Request Interceptor: Attach bearer token
+// Update baseURL on every request in case user changed server URL in settings
 api.interceptors.request.use(
   (config) => {
+    config.baseURL = getBaseURL();
     const token = useAuthStore.getState().accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
