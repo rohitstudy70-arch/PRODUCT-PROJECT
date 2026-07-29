@@ -22,12 +22,66 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// Helper function to resolve IP address location fallback
+async function resolveIpLocation(ip) {
+  try {
+    if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+      return {
+        latitude: 28.5355,
+        longitude: 77.3910,
+        address: 'Noida Telecom Area (IP Fallback)',
+        isp: 'Local ISP Network'
+      };
+    }
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,regionName,city,lat,lon,isp`);
+    const data = await response.json();
+    if (data && data.status === 'success') {
+      return {
+        latitude: data.lat,
+        longitude: data.lon,
+        address: `${data.city || data.regionName}, ${data.country} (IP Fallback)`,
+        isp: data.isp || 'Mobile Carrier'
+      };
+    }
+  } catch (err) {
+    console.warn('IP location lookup failed:', err.message);
+  }
+  return {
+    latitude: 28.5355,
+    longitude: 77.3910,
+    address: 'Noida Transit Hub (IP Fallback)',
+    isp: 'Carrier Gateway'
+  };
+}
+
 // POST /api/v1/tracking/ping - Receive location telemetry from staff device
 export const postLocationTelemetry = asyncHandler(async (req, res) => {
-  const { latitude, longitude, accuracy, speed, heading, batteryLevel, isInternetConnected, isGpsEnabled } = req.body;
+  let { latitude, longitude, accuracy, speed, heading, batteryLevel, isInternetConnected, isGpsEnabled } = req.body;
 
-  if (latitude === undefined || longitude === undefined) {
-    throw new ApiError(400, 'Latitude and longitude coordinates are required');
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || req.ip;
+  let trackingType = 'GPS';
+  let ispInfo = 'GPS Hardware';
+  let addressText = '';
+
+  // If GPS is disabled or coordinates are missing, fallback to IP Geolocation
+  if (isGpsEnabled === false || latitude === undefined || longitude === undefined || (latitude === 0 && longitude === 0)) {
+    trackingType = 'IP_FALLBACK';
+    isGpsEnabled = false;
+    const ipGeo = await resolveIpLocation(clientIp);
+    latitude = ipGeo.latitude;
+    longitude = ipGeo.longitude;
+    addressText = ipGeo.address;
+    ispInfo = ipGeo.isp;
+
+    // Trigger Admin Notification for Disabled GPS
+    await Notification.create({
+      organizationId: req.user.organizationId,
+      userId: req.user._id,
+      type: 'system_alert',
+      title: 'GPS Tracking Alert',
+      message: `Staff ${req.user.firstName} ${req.user.lastName} has disabled GPS! Tracking via IP (${clientIp} - ${ispInfo}).`,
+      link: '/tracking'
+    });
   }
 
   // Find active duty session for staff
@@ -76,6 +130,10 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
     batteryLevel: batteryLevel !== undefined ? batteryLevel : 100,
     isInternetConnected: isInternetConnected !== undefined ? isInternetConnected : true,
     isGpsEnabled: isGpsEnabled !== undefined ? isGpsEnabled : true,
+    trackingType,
+    ipAddress: clientIp,
+    isp: ispInfo,
+    address: addressText,
     timestamp: new Date()
   });
 
@@ -113,6 +171,10 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
       batteryLevel,
       isInternetConnected,
       isGpsEnabled,
+      trackingType,
+      ipAddress: clientIp,
+      isp: ispInfo,
+      address: addressText,
       timestamp: locationPoint.timestamp,
       totalDistanceKm: session.totalDistanceKm
     });

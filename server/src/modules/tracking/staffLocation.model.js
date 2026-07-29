@@ -45,6 +45,13 @@ const staffLocationSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    trackingType: {
+      type: String,
+      enum: ['GPS', 'IP_FALLBACK'],
+      default: 'GPS'
+    },
+    ipAddress: String,
+    isp: String,
     address: String,
     timestamp: {
       type: Date,
