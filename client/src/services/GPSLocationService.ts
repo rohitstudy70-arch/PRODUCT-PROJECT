@@ -9,50 +9,59 @@ class GPSLocationTracker {
   public async startTracking(): Promise<boolean> {
     if (this.isTrackingActive) return true;
 
-    if (!('geolocation' in navigator)) {
-      console.warn('Geolocation is not supported by this browser.');
-      return false;
-    }
-
     this.isTrackingActive = true;
 
     // Trigger immediate geolocation capture
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.lastPosition = pos;
-        this.sendTelemetry(pos);
-      },
-      (err) => {
-        console.warn('Initial GPS position error:', err.message);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.lastPosition = pos;
+          this.sendTelemetry(pos);
+        },
+        (err) => {
+          console.warn('Initial GPS position error, falling back to IP tracking:', err.message);
+          this.sendIpTelemetry();
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
 
-    // Watch position changes
-    this.watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        this.lastPosition = pos;
-      },
-      (err) => {
-        console.warn('GPS watchPosition error:', err.message);
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
-    );
+      // Watch position changes
+      this.watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          this.lastPosition = pos;
+        },
+        (err) => {
+          console.warn('GPS watchPosition error (GPS disabled or lost):', err.message);
+          this.lastPosition = null; // Clear outdated GPS position when GPS is turned off
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+      );
+    } else {
+      // Browser does not support geolocation API, send IP telemetry directly
+      this.sendIpTelemetry();
+    }
 
     // Send location telemetry every 20 seconds while duty is ON
     this.intervalId = setInterval(() => {
       if (this.lastPosition) {
         this.sendTelemetry(this.lastPosition);
       } else {
-        // Fallback retry
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            this.lastPosition = pos;
-            this.sendTelemetry(pos);
-          },
-          () => {},
-          { enableHighAccuracy: true }
-        );
+        // GPS is OFF or position is unavailable, try to capture or fallback to IP telemetry
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              this.lastPosition = pos;
+              this.sendTelemetry(pos);
+            },
+            (err) => {
+              console.warn('GPS ping failed, sending IP fallback telemetry:', err.message);
+              this.sendIpTelemetry();
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        } else {
+          this.sendIpTelemetry();
+        }
       }
     }, 20000);
 
@@ -61,7 +70,9 @@ class GPSLocationTracker {
 
   public stopTracking(): void {
     if (this.watchId !== null) {
-      navigator.geolocation.clearWatch(this.watchId);
+      if ('geolocation' in navigator) {
+        navigator.geolocation.clearWatch(this.watchId);
+      }
       this.watchId = null;
     }
 
@@ -102,6 +113,33 @@ class GPSLocationTracker {
       });
     } catch (err) {
       console.error('Failed to post location telemetry:', err);
+    }
+  }
+
+  private async sendIpTelemetry(): Promise<void> {
+    try {
+      let batteryLevel = 100;
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await (navigator as any).getBattery();
+          batteryLevel = Math.round(battery.level * 100);
+        } catch {
+          // Battery API optional
+        }
+      }
+
+      await api.post('/tracking/ping', {
+        latitude: 0,
+        longitude: 0,
+        accuracy: 1000,
+        speed: 0,
+        heading: 0,
+        batteryLevel,
+        isInternetConnected: navigator.onLine,
+        isGpsEnabled: false
+      });
+    } catch (err) {
+      console.error('Failed to post IP fallback location telemetry:', err);
     }
   }
 }
