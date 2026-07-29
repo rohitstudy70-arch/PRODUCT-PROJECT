@@ -52,6 +52,18 @@ export const QRScanner: React.FC<QRScannerProps> = ({
     const startScanner = async () => {
       try {
         setCameraError(null);
+
+        // Prompt native camera permission request via mediaDevices
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            // Stop temporary stream after obtaining permission
+            stream.getTracks().forEach(track => track.stop());
+          } catch (e) {
+            console.warn('getUserMedia prompt failed or was already granted:', e);
+          }
+        }
+
         const html5Qrcode = new Html5Qrcode(readerId);
         qrReaderRef.current = html5Qrcode;
 
@@ -59,7 +71,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         const devices = await Html5Qrcode.getCameras().catch(() => []);
         
         if (devices && devices.length > 0) {
-          // Select back camera if available, otherwise first camera (webcam)
+          // Select back camera if available, otherwise first camera
           const backCamera = devices.find(d => 
             d.label.toLowerCase().includes('back') || 
             d.label.toLowerCase().includes('environment') ||
@@ -87,7 +99,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         } else {
           // Fallback to facingMode constraint if getCameras returned empty list
           await html5Qrcode.start(
-            { facingMode: "user" },
+            { facingMode: "environment" },
             {
               fps: 30,
               qrbox: (width, height) => {
@@ -106,7 +118,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({
         }
       } catch (err: any) {
         console.error("Camera error:", err);
-        setCameraError("Camera permission denied, webcam blocked, or no camera found. Please use manual USB/Keyboard entry mode.");
+        setCameraError("Camera permission denied or camera blocked. Please allow camera access in phone settings or use USB Scanner / Manual entry mode.");
       }
     };
 
