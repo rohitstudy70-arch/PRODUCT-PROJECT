@@ -37,7 +37,7 @@ export const LoginPage: React.FC = () => {
         navigate(ROUTES.DASHBOARD);
       }, 800);
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Login failed. Please verify credentials.';
+      const msg = error.response?.data?.message || error.message || 'Login failed. Please verify credentials or network.';
       toast.error(msg);
     } finally {
       setLoading(false);
