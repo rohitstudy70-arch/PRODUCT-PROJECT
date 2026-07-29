@@ -312,10 +312,20 @@ export const getProductHistory = asyncHandler(async (req, res) => {
 });
 
 export const searchProducts = asyncHandler(async (req, res) => {
-  const q = (req.query.q || req.query.imei || req.query.query || '').trim();
+  let q = (req.query.q || req.query.imei || req.query.query || '').trim();
 
   if (!q) {
     return res.status(200).json(new ApiResponse(200, 'Products search query empty', []));
+  }
+
+  // Handle scanned JSON QR codes (e.g. {"productId":"GPS000001"} or {"imei":"864..."})
+  if (q.startsWith('{') && q.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(q);
+      q = parsed.imei || parsed.productId || parsed.serialNumber || parsed.rfidTag || q;
+    } catch (e) {
+      // ignore parse error and use raw string
+    }
   }
 
   const query = {
@@ -324,6 +334,7 @@ export const searchProducts = asyncHandler(async (req, res) => {
       { imei: { $regex: q, $options: 'i' } },
       { productId: { $regex: q, $options: 'i' } },
       { serialNumber: { $regex: q, $options: 'i' } },
+      { rfidTag: { $regex: q, $options: 'i' } },
       { qrCode: { $regex: q, $options: 'i' } },
       { name: { $regex: q, $options: 'i' } },
       { model: { $regex: q, $options: 'i' } }
@@ -333,7 +344,7 @@ export const searchProducts = asyncHandler(async (req, res) => {
   const products = await Product.find(query)
     .populate('category', 'name code prefix')
     .populate('currentBranchId', 'name code email phone address contactPerson status managerName')
-    .populate('currentHolderId', 'firstName lastName employeeId email phone fatherName alternatePhone aadharNumber panNumber addressDetails joiningDate designation bloodGroup emergencyContact status qrCode avatar')
+    .populate('currentHolderId', 'firstName lastName employeeId email phone fatherName designation bloodGroup emergencyContact status avatar')
     .sort({ updatedAt: -1 })
     .limit(20);
 

@@ -6,14 +6,16 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { Button } from '../components/ui/button';
 import { Dialog } from '../components/ui/dialog';
-import { Menu, QrCode } from 'lucide-react';
+import { Menu, QrCode, Scan } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import { UniversalProductScannerModal } from '../components/shared/UniversalProductScannerModal';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const { user } = useAuthStore();
   const { toggleSidebar } = useUIStore();
   const [showIdCard, setShowIdCard] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
 
   const getBreadcrumbs = () => {
     const path = location.pathname;
@@ -63,6 +65,17 @@ export const Header: React.FC = () => {
                 <span>LIVE DUTY GPS ON</span>
               </div>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowScannerModal(true)}
+              className="flex items-center space-x-1.5 text-xs border-indigo-500/50 hover:border-indigo-400 text-indigo-300 bg-indigo-950/50 hover:bg-indigo-900/60 cursor-pointer shadow-sm"
+              title="Scan any Barcode, IMEI, Serial No, or RFID Tag"
+            >
+              <Scan className="h-4 w-4 text-indigo-400 animate-pulse" />
+              <span className="hidden sm:inline font-bold">Scan Product</span>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
@@ -136,6 +149,12 @@ export const Header: React.FC = () => {
           </div>
         )}
       </Dialog>
+
+      {/* Universal Product & IMEI Scanner Modal */}
+      <UniversalProductScannerModal
+        isOpen={showScannerModal}
+        onClose={() => setShowScannerModal(false)}
+      />
     </header>
   );
 };
