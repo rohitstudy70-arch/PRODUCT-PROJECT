@@ -92,13 +92,20 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            {loading && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center space-x-3 text-amber-300 text-xs animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                <span>Connecting to cloud server... (Render free tier wakes up in ~15s on first load)</span>
+              </div>
+            )}
+
             <Button
               type="submit"
               loading={loading}
               className="w-full flex items-center justify-center space-x-2 mt-2"
             >
               <LogIn className="h-4 w-4" />
-              <span>Sign In</span>
+              <span>{loading ? 'Waking Server & Signing In...' : 'Sign In'}</span>
             </Button>
           </form>
         </CardContent>

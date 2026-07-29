@@ -1,0 +1,16 @@
+name: Keep Cloud Server Awake
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free tier from sleeping
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Cloud Backend
+        run: |
+          curl -s -X GET https://product-project-wmc4.onrender.com/api/v1/health
+          echo "Keep-alive ping sent to cloud backend."

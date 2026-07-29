@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Scan, QrCode, Search, Package, MapPin, User, Tag, 
-  ArrowRight, Printer, AlertTriangle, X
+  ArrowRight, Printer, AlertTriangle, X, Clock, ShieldCheck, 
+  Copy, Check, History, Info
 } from 'lucide-react';
 import { Dialog } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { QRScanner } from './QRScanner';
+import QRCodeSVG from 'react-qr-code';
 import api from '../../config/api';
 import { toast } from 'sonner';
 
@@ -27,6 +29,13 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
   const [product, setProduct] = useState<any | null>(null);
   const [matchedList, setMatchedList] = useState<any[]>([]);
   const [cameraMode, setCameraMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'location' | 'history' | 'qr'>('overview');
+  
+  // History & detail state
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -35,11 +44,31 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
       setProduct(null);
       setMatchedList([]);
       setCameraMode(false);
+      setHistory([]);
+      setActiveTab('overview');
       setTimeout(() => {
         inputRef.current?.focus();
       }, 150);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (product?._id) {
+      fetchProductHistory(product._id);
+    }
+  }, [product]);
+
+  const fetchProductHistory = async (productId: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await api.get(`/products/${productId}/history`);
+      setHistory(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to load product history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const handleSearch = async (codeToSearch: string) => {
     const term = codeToSearch.trim();
@@ -48,6 +77,7 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
     setLoading(true);
     setProduct(null);
     setMatchedList([]);
+    setHistory([]);
 
     try {
       const res = await api.get('/products/search', { params: { q: term } });
@@ -84,6 +114,14 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
     handleSearch(scannedText);
   };
 
+  const copyToClipboard = (text: string, fieldName: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast.success(`Copied ${fieldName}: ${text}`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'available': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
@@ -97,18 +135,30 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
     }
   };
 
+  const getWarrantyStatus = (warranty: any) => {
+    if (!warranty || (!warranty.startDate && !warranty.endDate)) {
+      return { status: 'No Warranty Record', variant: 'bg-slate-800 text-slate-400 border-slate-700' };
+    }
+    const now = new Date();
+    const end = warranty.endDate ? new Date(warranty.endDate) : null;
+    if (end && end < now) {
+      return { status: 'Expired', variant: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+    }
+    return { status: 'Active Warranty', variant: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' };
+  };
+
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="⚡ Universal Product Scanner & IMEI Lookup">
-      <div className="space-y-5 p-1 max-w-2xl mx-auto">
-        {/* Top Scan Bar */}
+    <Dialog isOpen={isOpen} onClose={onClose} title="⚡ Universal Product & Hardware Detail Scanner">
+      <div className="space-y-4 p-1 max-w-3xl mx-auto">
+        {/* Top Scanner Input Bar */}
         <div className="bg-slate-900/90 p-4 rounded-xl border border-indigo-500/30 space-y-3 relative overflow-hidden shadow-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Scan className="h-5 w-5 text-indigo-400 animate-pulse" />
-              <span className="text-sm font-bold text-slate-200">Scan Product Code</span>
+              <span className="text-sm font-bold text-slate-200">Scan Hardware / RFID / Barcode</span>
             </div>
             <Badge variant="outline" className="border-indigo-500/40 text-indigo-300 bg-indigo-950/40 text-[10px]">
-              USB Barcode / RFID / Camera Compatible
+              USB Scanner / Camera / RFID Ready
             </Badge>
           </div>
 
@@ -129,6 +179,7 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
                     setQuery('');
                     setProduct(null);
                     setMatchedList([]);
+                    setHistory([]);
                     inputRef.current?.focus();
                   }}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
@@ -170,7 +221,7 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
         {cameraMode && (
           <div className="border border-indigo-500/40 rounded-xl overflow-hidden bg-slate-950 p-3 space-y-2">
             <p className="text-xs text-center text-indigo-300 font-medium">
-              Point your phone or webcam camera at the product barcode / QR tag
+              Point phone or webcam camera at product barcode / QR tag
             </p>
             <QRScanner
               onScanSuccess={handleCameraScan}
@@ -187,11 +238,11 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
           </div>
         )}
 
-        {/* Multiple Matches Selection List */}
+        {/* Multiple Matches Selector */}
         {matchedList.length > 1 && (
           <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-2">
             <p className="text-xs font-semibold text-slate-400">
-              Found {matchedList.length} matching products. Select to view details:
+              Found {matchedList.length} matching products. Select to view complete details:
             </p>
             <div className="flex flex-wrap gap-2">
               {matchedList.map((item) => (
@@ -200,18 +251,18 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
                   onClick={() => setProduct(item)}
                   className={`px-3 py-1.5 rounded-lg border text-xs font-mono transition-all text-left ${
                     product?._id === item._id
-                      ? 'bg-indigo-950 border-indigo-500 text-indigo-200'
+                      ? 'bg-indigo-950 border-indigo-500 text-indigo-200 font-bold'
                       : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                   }`}
                 >
-                  <span className="font-bold">{item.name}</span> ({item.model || item.productId})
+                  <span>{item.name}</span> ({item.model || item.productId})
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Product Details Display Card */}
+        {/* Complete Product Details Card & Tabbed View */}
         {product ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-2xl relative overflow-hidden">
             {/* Header / Title & Status */}
@@ -239,117 +290,308 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
               </div>
             </div>
 
-            {/* Core Identification Identifiers */}
+            {/* Quick Identifier Bar with Copy Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {/* IMEI Number */}
-              <div className="p-3 bg-slate-950/80 rounded-xl border border-indigo-500/20 space-y-1">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
-                  <Tag className="h-3 w-3 mr-1 text-indigo-400" />
-                  IMEI Number
-                </p>
-                <p className="text-sm font-bold font-mono text-indigo-300 break-all">
-                  {product.imei || 'N/A'}
-                </p>
+              {/* IMEI */}
+              <div className="p-3 bg-slate-950/80 rounded-xl border border-indigo-500/20 flex items-center justify-between group">
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
+                    <Tag className="h-3 w-3 mr-1 text-indigo-400" /> IMEI Number
+                  </p>
+                  <p className="text-xs font-bold font-mono text-indigo-300 break-all mt-0.5">
+                    {product.imei || 'N/A'}
+                  </p>
+                </div>
+                {product.imei && (
+                  <button
+                    onClick={() => copyToClipboard(product.imei, 'IMEI')}
+                    className="text-slate-500 hover:text-indigo-300 p-1"
+                    title="Copy IMEI"
+                  >
+                    {copiedField === 'IMEI' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                )}
               </div>
 
               {/* Serial Number */}
-              <div className="p-3 bg-slate-950/80 rounded-xl border border-purple-500/20 space-y-1">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
-                  <Tag className="h-3 w-3 mr-1 text-purple-400" />
-                  Serial Number
-                </p>
-                <p className="text-sm font-bold font-mono text-purple-300 break-all">
-                  {product.serialNumber || 'N/A'}
-                </p>
-              </div>
-
-              {/* Product SKU / ID */}
-              <div className="p-3 bg-slate-950/80 rounded-xl border border-emerald-500/20 space-y-1">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
-                  <Package className="h-3 w-3 mr-1 text-emerald-400" />
-                  Product SKU / ID
-                </p>
-                <p className="text-sm font-bold font-mono text-emerald-300 break-all">
-                  {product.productId}
-                </p>
-              </div>
-            </div>
-
-            {/* Secondary Attributes Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-              {/* Model Name */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">Model Name</span>
-                <span className="font-semibold text-slate-200">{product.model || 'N/A'}</span>
-              </div>
-
-              {/* RFID Tag UID */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">RFID Tag UID</span>
-                <span className="font-semibold font-mono text-indigo-300">{product.rfidTag || 'Not Tagged'}</span>
-              </div>
-
-              {/* Rack Number */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">Storage Rack</span>
-                <span className="font-semibold text-emerald-400">{product.rackNumber || 'RACK-01'}</span>
-              </div>
-
-              {/* Vendor / Brand */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">Vendor / Brand</span>
-                <span className="font-semibold text-slate-200">{product.vendor || 'N/A'}</span>
-              </div>
-
-              {/* Batch Number */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">Batch / Lot</span>
-                <span className="font-semibold text-slate-200">{product.batch || 'N/A'}</span>
-              </div>
-
-              {/* Purchase Date */}
-              <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
-                <span className="text-slate-500 text-[10px] uppercase font-bold block">Purchase Date</span>
-                <span className="font-semibold text-slate-300">
-                  {product.purchaseDate ? new Date(product.purchaseDate).toLocaleDateString() : 'N/A'}
-                </span>
-              </div>
-            </div>
-
-            {/* Location & Current Holder Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="p-3 bg-indigo-950/30 rounded-xl border border-indigo-500/30 space-y-1">
-                <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider flex items-center">
-                  <MapPin className="h-3.5 w-3.5 mr-1 text-indigo-400" />
-                  Current Branch Location
-                </p>
-                <p className="text-sm font-bold text-slate-100">
-                  {product.currentBranchId ? product.currentBranchId.name : 'Central Head Office Stock'}
-                </p>
-                {product.currentBranchId?.address && (
-                  <p className="text-[11px] text-slate-400 truncate">{product.currentBranchId.address}</p>
+              <div className="p-3 bg-slate-950/80 rounded-xl border border-purple-500/20 flex items-center justify-between group">
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
+                    <Tag className="h-3 w-3 mr-1 text-purple-400" /> Serial Number
+                  </p>
+                  <p className="text-xs font-bold font-mono text-purple-300 break-all mt-0.5">
+                    {product.serialNumber || 'N/A'}
+                  </p>
+                </div>
+                {product.serialNumber && (
+                  <button
+                    onClick={() => copyToClipboard(product.serialNumber, 'Serial Number')}
+                    className="text-slate-500 hover:text-purple-300 p-1"
+                    title="Copy Serial Number"
+                  >
+                    {copiedField === 'Serial Number' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  </button>
                 )}
               </div>
 
-              <div className="p-3 bg-purple-950/30 rounded-xl border border-purple-500/30 space-y-1">
-                <p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider flex items-center">
-                  <User className="h-3.5 w-3.5 mr-1 text-purple-400" />
-                  Current Holder / Courier Staff
-                </p>
-                {product.currentHolderId ? (
-                  <div>
-                    <p className="text-sm font-bold text-slate-100">
-                      {product.currentHolderId.firstName} {product.currentHolderId.lastName}
+              {/* Product SKU ID */}
+              <div className="p-3 bg-slate-950/80 rounded-xl border border-emerald-500/20 flex items-center justify-between group">
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center">
+                    <Package className="h-3 w-3 mr-1 text-emerald-400" /> Product SKU / ID
+                  </p>
+                  <p className="text-xs font-bold font-mono text-emerald-300 break-all mt-0.5">
+                    {product.productId}
+                  </p>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(product.productId, 'Product ID')}
+                  className="text-slate-500 hover:text-emerald-300 p-1"
+                  title="Copy Product ID"
+                >
+                  {copiedField === 'Product ID' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-800 space-x-4">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`pb-2 text-xs font-bold transition-colors flex items-center space-x-1.5 border-b-2 ${
+                  activeTab === 'overview'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Info className="h-3.5 w-3.5" />
+                <span>Overview & Specs</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('location')}
+                className={`pb-2 text-xs font-bold transition-colors flex items-center space-x-1.5 border-b-2 ${
+                  activeTab === 'location'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                <span>Location & Holder</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`pb-2 text-xs font-bold transition-colors flex items-center space-x-1.5 border-b-2 ${
+                  activeTab === 'history'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <History className="h-3.5 w-3.5" />
+                <span>Audit Trail ({history.length})</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('qr')}
+                className={`pb-2 text-xs font-bold transition-colors flex items-center space-x-1.5 border-b-2 ${
+                  activeTab === 'qr'
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                <span>QR Label Tag</span>
+              </button>
+            </div>
+
+            {/* TAB 1: OVERVIEW & SPECS */}
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold block">Brand / Vendor</span>
+                    <span className="font-semibold text-slate-200">{product.vendor || 'N/A'}</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold block">Batch / Lot Code</span>
+                    <span className="font-semibold text-slate-200">{product.batch || 'N/A'}</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold block">Storage Rack Bin</span>
+                    <span className="font-semibold text-emerald-400">{product.rackNumber || 'RACK-01'}</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-950/40 rounded-lg border border-slate-800 space-y-0.5">
+                    <span className="text-slate-500 text-[10px] uppercase font-bold block">RFID Tag UID</span>
+                    <span className="font-semibold font-mono text-indigo-300">{product.rfidTag || 'Not Tagged'}</span>
+                  </div>
+                </div>
+
+                {/* Purchase & Warranty Card */}
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-300 flex items-center">
+                      <ShieldCheck className="h-4 w-4 mr-1.5 text-indigo-400" />
+                      Warranty & Purchase Information
+                    </span>
+                    {(() => {
+                      const wInfo = getWarrantyStatus(product.warranty);
+                      return (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${wInfo.variant}`}>
+                          {wInfo.status}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 text-[10px]">Purchase Date:</span>
+                      <p className="font-semibold text-slate-300">
+                        {product.purchaseDate ? new Date(product.purchaseDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 text-[10px]">Warranty Start:</span>
+                      <p className="font-semibold text-slate-300">
+                        {product.warranty?.startDate ? new Date(product.warranty.startDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 text-[10px]">Warranty Expiry:</span>
+                      <p className="font-semibold text-slate-300">
+                        {product.warranty?.endDate ? new Date(product.warranty.endDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {product.notes && (
+                  <div className="p-3 bg-slate-950/40 rounded-xl border border-slate-800 space-y-1 text-xs">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Product Notes & Remarks</span>
+                    <p className="text-slate-300">{product.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: LOCATION & CUSTODIAN */}
+            {activeTab === 'location' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-indigo-950/30 rounded-xl border border-indigo-500/30 space-y-2">
+                  <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center">
+                    <MapPin className="h-4 w-4 mr-1.5 text-indigo-400" />
+                    Current Branch Location
+                  </p>
+                  <div className="space-y-1">
+                    <p className="text-base font-bold text-slate-100">
+                      {product.currentBranchId ? product.currentBranchId.name : 'Central Main Stock'}
                     </p>
-                    <p className="text-[11px] text-slate-400 font-mono">
-                      ID: {product.currentHolderId.employeeId} | {product.currentHolderId.phone}
+                    {product.currentBranchId?.code && (
+                      <p className="text-xs text-indigo-300 font-mono">Code: {product.currentBranchId.code}</p>
+                    )}
+                    {product.currentBranchId?.address && (
+                      <p className="text-xs text-slate-400">{product.currentBranchId.address}</p>
+                    )}
+                    {product.currentBranchId?.phone && (
+                      <p className="text-xs text-slate-400">Phone: {product.currentBranchId.phone}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-purple-950/30 rounded-xl border border-purple-500/30 space-y-2">
+                  <p className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center">
+                    <User className="h-4 w-4 mr-1.5 text-purple-400" />
+                    Assigned Holder / Custodian
+                  </p>
+                  {product.currentHolderId ? (
+                    <div className="space-y-1">
+                      <p className="text-base font-bold text-slate-100">
+                        {product.currentHolderId.firstName} {product.currentHolderId.lastName}
+                      </p>
+                      <p className="text-xs text-purple-300 font-mono">
+                        ID: {product.currentHolderId.employeeId} | {product.currentHolderId.designation || 'Staff'}
+                      </p>
+                      {product.currentHolderId.phone && (
+                        <p className="text-xs text-slate-400">Phone: {product.currentHolderId.phone}</p>
+                      )}
+                      {product.currentHolderId.email && (
+                        <p className="text-xs text-slate-400">Email: {product.currentHolderId.email}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">
+                      No individual staff assigned (Stored in branch inventory)
                     </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: AUDIT & MOVEMENT HISTORY */}
+            {activeTab === 'history' && (
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                {loadingHistory ? (
+                  <div className="p-6 text-center text-slate-400 text-xs flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-indigo-500" />
+                    <span>Fetching audit trail...</span>
+                  </div>
+                ) : history.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-xs border border-slate-800 rounded-xl bg-slate-950/50">
+                    <Clock className="h-8 w-8 mx-auto text-slate-600 mb-1" />
+                    <span>No recorded movements or history entries yet.</span>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500 italic">No individual staff assigned (In Branch Storage)</p>
+                  history.map((h: any, idx: number) => (
+                    <div key={h._id || idx} className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-start justify-between text-xs space-x-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-slate-200 uppercase tracking-wider text-[11px]">
+                            {h.action?.replace('_', ' ') || 'Stock Update'}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {new Date(h.timestamp || h.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {h.notes && <p className="text-slate-400 text-[11px]">{h.notes}</p>}
+                        <div className="flex items-center space-x-3 text-[10px] font-mono text-slate-400">
+                          {h.fromBranchId && <span>From: {h.fromBranchId.name}</span>}
+                          {h.toBranchId && <span>To: {h.toBranchId.name}</span>}
+                          {h.staffId && (
+                            <span>By: {h.staffId.firstName} {h.staffId.lastName} ({h.staffId.employeeId})</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
-            </div>
+            )}
+
+            {/* TAB 4: QR CODE LABEL */}
+            {activeTab === 'qr' && (
+              <div className="flex flex-col items-center justify-center p-4 space-y-3 bg-slate-950 rounded-xl border border-slate-800">
+                <div className="p-3 bg-white rounded-xl shadow-lg border border-slate-200">
+                  <QRCodeSVG
+                    id="scanner-modal-qr-svg"
+                    value={product.qrCode || product.productId || product._id}
+                    size={160}
+                    level="M"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-slate-200">{product.name}</p>
+                  <p className="text-[11px] text-slate-400 font-mono">SKU: {product.productId} | IMEI: {product.imei || 'N/A'}</p>
+                  <p className="text-[10px] text-slate-500 font-mono select-all mt-1">QR Code UUID: {product.qrCode || 'Not Generated'}</p>
+                </div>
+              </div>
+            )}
 
             {/* Footer Action Buttons */}
             <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
@@ -369,7 +611,7 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
               <Button
                 variant="outline"
                 onClick={() => {
-                  toast.info(`Product QR Code: ${product.qrCode || product.productId}`);
+                  toast.info(`Product QR Code Payload: ${product.qrCode || product.productId}`);
                 }}
                 className="text-xs space-x-1"
               >
@@ -391,3 +633,4 @@ export const UniversalProductScannerModal: React.FC<UniversalProductScannerModal
     </Dialog>
   );
 };
+export default UniversalProductScannerModal;

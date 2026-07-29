@@ -101,4 +101,16 @@ api.interceptors.response.use(
   }
 );
 
+export const pingServer = async () => {
+  try {
+    const apiUrl = (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL;
+    await axios.get(`${apiUrl}/health`, { timeout: 25000 });
+    console.log('⚡ Server pre-warmup ping successful');
+    return true;
+  } catch (e) {
+    console.warn('Server pre-warmup ping failed/delayed', e);
+    return false;
+  }
+};
+
 export default api;

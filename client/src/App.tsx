@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
 import { ROUTES } from './config/routes';
+import { pingServer } from './config/api';
 
 // Import Feature Pages
 import LoginPage from './features/auth/pages/LoginPage';
@@ -20,6 +21,11 @@ import LiveTrackingPage from './features/tracking/pages/LiveTrackingPage';
 import TrackingReportsPage from './features/tracking/pages/TrackingReportsPage';
 
 export const App: React.FC = () => {
+  useEffect(() => {
+    // Ping cloud backend as soon as app loads to wake it up in background
+    pingServer();
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
