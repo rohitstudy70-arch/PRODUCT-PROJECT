@@ -21,8 +21,8 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom colored map markers
-const createCustomMarkerIcon = (color: 'green' | 'yellow' | 'red') => {
-  const colorHex = color === 'green' ? '#22c55e' : color === 'yellow' ? '#eab308' : '#ef4444';
+const createCustomMarkerIcon = (color: 'green' | 'yellow' | 'orange' | 'red') => {
+  const colorHex = color === 'green' ? '#22c55e' : color === 'yellow' ? '#eab308' : color === 'orange' ? '#f97316' : '#ef4444';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${colorHex}" width="36" height="36" style="filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));">
     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
   </svg>`;
@@ -37,6 +37,7 @@ const createCustomMarkerIcon = (color: 'green' | 'yellow' | 'red') => {
 
 const greenIcon = createCustomMarkerIcon('green');
 const yellowIcon = createCustomMarkerIcon('yellow');
+const orangeIcon = createCustomMarkerIcon('orange');
 const redIcon = createCustomMarkerIcon('red');
 
 // Helper component to center map when selecting staff
@@ -98,6 +99,10 @@ export const LiveTrackingPage: React.FC = () => {
                 batteryLevel: data.batteryLevel,
                 isInternetConnected: data.isInternetConnected,
                 isGpsEnabled: data.isGpsEnabled,
+                trackingType: data.trackingType,
+                ipAddress: data.ipAddress,
+                isp: data.isp,
+                address: data.address,
                 timestamp: data.timestamp
               },
               session: {
@@ -133,6 +138,9 @@ export const LiveTrackingPage: React.FC = () => {
 
   const getMarkerIcon = (item: any) => {
     if (!item.latestLocation) return redIcon;
+    if (item.latestLocation.isGpsEnabled === false || item.latestLocation.trackingType === 'IP_FALLBACK') {
+      return orangeIcon;
+    }
     const minutesAgo = (new Date().getTime() - new Date(item.latestLocation.timestamp).getTime()) / 60000;
     if (minutesAgo > 5) return redIcon;
     return item.latestLocation.speed > 2 ? greenIcon : yellowIcon;
@@ -176,6 +184,10 @@ export const LiveTrackingPage: React.FC = () => {
             <span>Idle (Stopped)</span>
           </div>
           <div className="flex items-center space-x-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-orange-500 inline-block" />
+            <span>IP Fallback (GPS Off)</span>
+          </div>
+          <div className="flex items-center space-x-1.5">
             <span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" />
             <span>Offline (&gt;5 mins)</span>
           </div>
@@ -214,13 +226,26 @@ export const LiveTrackingPage: React.FC = () => {
                 >
                   <Popup className="custom-popup">
                     <div className="p-1 space-y-2 min-w-[200px] text-slate-900">
-                      <div className="font-bold text-sm border-b pb-1">
-                        {item.staff.firstName} {item.staff.lastName}
+                      <div className="font-bold text-sm border-b pb-1 flex items-center justify-between">
+                        <span>{item.staff.firstName} {item.staff.lastName}</span>
+                        {item.latestLocation.isGpsEnabled === false && (
+                          <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">GPS Off</span>
+                        )}
                       </div>
                       <div className="text-xs space-y-1">
                         <p><span className="font-bold">ID:</span> {item.staff.employeeId}</p>
                         <p><span className="font-bold">Branch:</span> {item.staff.branchId?.name}</p>
-                        <p><span className="font-bold">Speed:</span> {item.latestLocation.speed || 0} km/h</p>
+                        {item.latestLocation.isGpsEnabled === false || item.latestLocation.trackingType === 'IP_FALLBACK' ? (
+                          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded p-1.5 my-1 text-[11px]">
+                            <p className="font-bold text-amber-800">⚠️ IP Tracking Active</p>
+                            <p><span className="font-semibold">ISP:</span> {item.latestLocation.isp || 'Telecom/Wi-Fi'}</p>
+                            <p><span className="font-semibold">Area:</span> {item.latestLocation.address || 'Telecom Gateway'}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <p><span className="font-bold">Speed:</span> {item.latestLocation.speed || 0} km/h</p>
+                          </>
+                        )}
                         <p><span className="font-bold">Battery:</span> {item.latestLocation.batteryLevel}%</p>
                         <p><span className="font-bold">Last Ping:</span> {new Date(item.latestLocation.timestamp).toLocaleTimeString()}</p>
                       </div>
