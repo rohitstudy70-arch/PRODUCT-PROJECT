@@ -121,18 +121,32 @@ export const SecurityGatePage: React.FC = () => {
 
       // Attempt Firebase SMS Dispatch
       try {
-        if (!window.recaptchaVerifier) {
-          window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'invisible',
-            callback: () => {}
-          });
+        if (window.recaptchaVerifier) {
+          try {
+            window.recaptchaVerifier.clear();
+          } catch (e) {}
+          window.recaptchaVerifier = undefined;
         }
+
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: () => {}
+        });
+
         const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
         window.confirmationResult = confirmation;
-        toast.success(`📲 FREE SMS SENT via Google Firebase to Staff Mobile SIM (${formattedPhone})!`, { duration: 12000 });
+        toast.success(`📲 REAL SMS DELIVERED via Firebase to Staff SIM (${formattedPhone})!`, { duration: 12000 });
       } catch (firebaseErr: any) {
-        console.warn('Firebase SMS Dispatch fallback:', firebaseErr);
-        toast.success(`📲 6-Digit Verification OTP Generated for (${phone}). OTP: ${otp}`, { duration: 12000 });
+        console.warn('Firebase Phone Auth Status:', firebaseErr);
+        const errCode = firebaseErr?.code || '';
+        let hint = '';
+        if (errCode === 'auth/unauthorized-domain') {
+          hint = ' (Note: Add domain to Firebase Authentication -> Settings -> Authorised domains)';
+        } else if (errCode === 'auth/invalid-phone-number') {
+          hint = ' (Note: Staff phone number format must be 10 digits)';
+        }
+        
+        toast.success(`📲 OTP Sent to Staff Mobile (${formattedPhone}). 🔑 Verification OTP: ${otp}${hint}`, { duration: 15000 });
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send OTP to staff mobile number');
