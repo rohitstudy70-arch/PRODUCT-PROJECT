@@ -39,8 +39,8 @@ export const Sidebar: React.FC = () => {
     { label: 'Security Gate', path: ROUTES.SECURITY, icon: ShieldCheck, roles: ['super_admin', 'branch_admin', 'security_guard'] },
     { label: 'Branch Receiving', path: ROUTES.RECEIVING, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager'] },
     { label: 'Audit Trail', path: ROUTES.AUDIT, icon: ScrollText, roles: ['super_admin'] },
-    { label: 'Live Staff Tracking', path: ROUTES.TRACKING, icon: MapPin, roles: ['super_admin', 'branch_admin'] },
-    { label: 'Duty Reports', path: ROUTES.TRACKING_REPORTS, icon: FileSpreadsheet, roles: ['super_admin', 'branch_admin'] }
+    { label: 'Live Staff Tracking', path: ROUTES.TRACKING, icon: MapPin, roles: ['super_admin'] },
+    { label: 'Duty Reports', path: ROUTES.TRACKING_REPORTS, icon: FileSpreadsheet, roles: ['super_admin'] }
   ];
 
   const filteredItems = navItems.filter((item) => item.roles.includes(role));

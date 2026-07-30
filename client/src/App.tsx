@@ -45,10 +45,6 @@ export const App: React.FC = () => {
               <Route path={ROUTES.BRANCHES} element={<BranchListPage />} />
               <Route path={ROUTES.STAFF} element={<StaffListPage />} />
               <Route path={ROUTES.AUDIT} element={<AuditLogPage />} />
-            </Route>
-
-            {/* Live GPS Tracking & Reports */}
-            <Route element={<ProtectedRoute allowedRoles={['super_admin', 'branch_admin']} />}>
               <Route path={ROUTES.TRACKING} element={<LiveTrackingPage />} />
               <Route path={ROUTES.TRACKING_REPORTS} element={<TrackingReportsPage />} />
             </Route>
