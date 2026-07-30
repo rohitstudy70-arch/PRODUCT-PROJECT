@@ -479,10 +479,31 @@ export const SecurityGatePage: React.FC = () => {
                 {/* OTP Sent Input & Verification Area */}
                 {!otpVerified && otpSent && (
                   <div className="p-3 bg-slate-950 border border-amber-500/30 rounded-xl space-y-3">
+                    {/* Live OTP Badge Display */}
+                    {lastSentOtp && (
+                      <div className="flex flex-col sm:flex-row items-center justify-between p-2.5 bg-indigo-950/60 border border-indigo-500/40 rounded-lg gap-2">
+                        <div className="flex items-center space-x-2">
+                          <KeyRound className="h-4 w-4 text-indigo-400 animate-bounce" />
+                          <span className="text-xs font-bold text-slate-300">Live Verification OTP Code:</span>
+                          <span className="font-mono font-black text-sm tracking-widest text-amber-300 bg-amber-950/80 px-3 py-1 rounded border border-amber-500/40">
+                            {lastSentOtp}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setEnteredOtp(lastSentOtp)}
+                          className="text-[11px] h-7 px-2.5 bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-200 border-indigo-500/30"
+                        >
+                          ⚡ Auto-Fill OTP
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <div className="flex-1 space-y-1 w-full">
                         <label className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center">
-                          <Lock className="h-3 w-3 mr-1" /> Enter 6-Digit OTP Sent to Staff Mobile
+                          <Lock className="h-3 w-3 mr-1" /> Enter 6-Digit OTP Sent to Staff Mobile ({staffData.phone || 'Staff SIM'})
                         </label>
                         <Input
                           type="text"
