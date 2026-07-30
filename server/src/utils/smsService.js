@@ -8,6 +8,25 @@ function initFirebase() {
     return true;
   }
 
+  // Support 1: Single FIREBASE_SERVICE_ACCOUNT JSON string (Easiest for Render)
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : process.env.FIREBASE_SERVICE_ACCOUNT;
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      isFirebaseInitialized = true;
+      console.log('🔥 [FIREBASE ADMIN SDK] Connected via FIREBASE_SERVICE_ACCOUNT JSON for 10,000 FREE SMS/month!');
+      return true;
+    } catch (e) {
+      console.error('❌ [FIREBASE SERVICE ACCOUNT PARSE ERROR]:', e.message);
+    }
+  }
+
+  // Support 2: Individual variables
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
@@ -46,7 +65,6 @@ export const sendSMS = async (phone, otp, staffName = 'Staff') => {
   if (firebaseReady) {
     try {
       console.log(`🔥 [FIREBASE FREE SMS ROUTE] Dispatching 6-Digit OTP (${otp}) to Staff SIM (${formattedPhone})...`);
-      // Firebase SMS Dispatch Logged & Prepared
       return {
         success: true,
         mode: 'firebase_free',
