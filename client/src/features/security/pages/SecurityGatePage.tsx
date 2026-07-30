@@ -6,6 +6,7 @@ import { QRScanner } from '../../../components/shared/QRScanner';
 import { Badge } from '../../../components/ui/badge';
 import { Input } from '../../../components/ui/input';
 import api from '../../../config/api';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '../../../config/firebase';
 import { Toaster, toast } from 'sonner';
 import {
   ShieldAlert,
@@ -19,6 +20,13 @@ import {
   Unlock,
   KeyRound
 } from 'lucide-react';
+
+declare global {
+  interface Window {
+    recaptchaVerifier?: any;
+    confirmationResult?: any;
+  }
+}
 
 export const SecurityGatePage: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(0); // 0 = scan staff QR, 1 = scan product QRs
@@ -107,7 +115,25 @@ export const SecurityGatePage: React.FC = () => {
       const { phone, otp } = res.data.data;
       setOtpSent(true);
       setLastSentOtp(otp);
-      toast.success(`📲 6-Digit OTP Sent to Staff Mobile (${phone}). Verification OTP: ${otp}`, { duration: 12000 });
+
+      const cleanPhone = (phone || '').replace(/[^0-9]/g, '').slice(-10);
+      const formattedPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : phone;
+
+      // Attempt Firebase SMS Dispatch
+      try {
+        if (!window.recaptchaVerifier) {
+          window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible',
+            callback: () => {}
+          });
+        }
+        const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+        window.confirmationResult = confirmation;
+        toast.success(`📲 FREE SMS SENT via Google Firebase to Staff Mobile SIM (${formattedPhone})!`, { duration: 12000 });
+      } catch (firebaseErr: any) {
+        console.warn('Firebase SMS Dispatch fallback:', firebaseErr);
+        toast.success(`📲 6-Digit Verification OTP Generated for (${phone}). OTP: ${otp}`, { duration: 12000 });
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send OTP to staff mobile number');
     } finally {
@@ -123,6 +149,13 @@ export const SecurityGatePage: React.FC = () => {
     }
     setVerifyingOtp(true);
     try {
+      if (window.confirmationResult) {
+        try {
+          await window.confirmationResult.confirm(enteredOtp.trim());
+        } catch (fErr) {
+          console.log('Firebase verify fallback to backend API');
+        }
+      }
       const res = await api.post('/security/verify-otp', {
         staffId: staffData._id,
         otp: enteredOtp.trim()
@@ -728,6 +761,7 @@ export const SecurityGatePage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      <div id="recaptcha-container"></div>
     </div>
   );
 };
