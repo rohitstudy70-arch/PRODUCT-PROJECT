@@ -46,7 +46,7 @@ export const getProductCategories = asyncHandler(async (req, res) => {
 
 // --- PRODUCTS ---
 export const createProduct = asyncHandler(async (req, res) => {
-  const { name, categoryId, serialNumber, imei, model, batch, vendor, purchaseDate, warranty, currentBranchId, notes } = req.body;
+  const { name, categoryId, serialNumber, imei, model, batch, vendor, purchaseDate, warranty, currentBranchId, notes, rackNumber } = req.body;
 
   if (!name || !categoryId || !currentBranchId) {
     throw new ApiError(400, 'Product name, category, and initial location (branch) are required');
@@ -93,6 +93,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     warranty,
     currentBranchId,
     notes,
+    rackNumber: rackNumber || 'RACK-01',
     status: 'available'
   });
 
@@ -205,7 +206,8 @@ export const updateProduct = asyncHandler(async (req, res) => {
     purchaseDate, 
     warranty, 
     currentBranchId, 
-    notes 
+    notes,
+    rackNumber
   } = req.body;
 
   const product = await Product.findById(req.params.id);
@@ -232,6 +234,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
   if (warranty !== undefined) product.warranty = warranty;
   if (currentBranchId !== undefined && req.user.role === 'super_admin') product.currentBranchId = currentBranchId;
   if (notes !== undefined) product.notes = notes;
+  if (rackNumber !== undefined) product.rackNumber = rackNumber;
 
   await product.save();
   const updatedProduct = await Product.findById(product._id)

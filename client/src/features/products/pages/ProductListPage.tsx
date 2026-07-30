@@ -75,6 +75,7 @@ export const ProductListPage: React.FC = () => {
   const [currentBranchId, setCurrentBranchId] = useState('');
   const [notes, setNotes] = useState('');
   const [rfidTag, setRfidTag] = useState('');
+  const [rackNumber, setRackNumber] = useState('');
 
   const { user } = useAuthStore();
 
@@ -120,6 +121,7 @@ export const ProductListPage: React.FC = () => {
     setCurrentBranchId(userBranchStr || (centralBranch ? centralBranch._id : (branches[0]?._id || '')));
     setNotes('');
     setRfidTag('');
+    setRackNumber('');
     setModalOpen(true);
   };
 
@@ -137,6 +139,7 @@ export const ProductListPage: React.FC = () => {
     setCurrentBranchId(product.currentBranchId?._id || product.currentBranchId || branches[0]?._id || '');
     setNotes(product.notes || '');
     setRfidTag(product.rfidTag || '');
+    setRackNumber(product.rackNumber || '');
     setEditModalOpen(true);
   };
 
@@ -160,6 +163,7 @@ export const ProductListPage: React.FC = () => {
         vendor,
         status,
         condition,
+        rackNumber: rackNumber || undefined,
         notes,
         rfidTag: rfidTag || null
       };
@@ -195,6 +199,7 @@ export const ProductListPage: React.FC = () => {
         batch,
         vendor,
         currentBranchId,
+        rackNumber: rackNumber || undefined,
         notes,
         rfidTag: rfidTag || null
       };
@@ -296,6 +301,9 @@ export const ProductListPage: React.FC = () => {
     { header: 'Product Name', accessorKey: 'name' },
     { header: 'Category', accessorKey: 'category.name', render: (item) => item.category?.name },
     { header: 'Serial No', accessorKey: 'serialNumber' },
+    { header: 'Rack No.', accessorKey: 'rackNumber', render: (item) => (
+      <span className="font-mono text-xs text-amber-400">{(item as any).rackNumber || 'RACK-01'}</span>
+    )},
     { header: 'Branch Location', accessorKey: 'currentBranchId.name', render: (item) => item.currentBranchId ? item.currentBranchId.name : 'Main Organization' },
     {
       header: 'Status',
@@ -432,6 +440,13 @@ export const ProductListPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-amber-400">📦 Rack / Shelf Location</label>
+              <Input value={rackNumber} onChange={(e) => setRackNumber(e.target.value)} placeholder="e.g. RACK-01, A1-SHELF-3, GODOWN-B2" />
+            </div>
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400">Notes / Remarks</label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter details..." />
@@ -530,6 +545,12 @@ export const ProductListPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-amber-400">📦 Rack / Shelf Location</label>
+              <Input value={rackNumber} onChange={(e) => setRackNumber(e.target.value)} placeholder="e.g. RACK-01, A1-SHELF-3, GODOWN-B2" />
+            </div>
+          </div>
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400">Notes / Remarks</label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Enter details..." />
