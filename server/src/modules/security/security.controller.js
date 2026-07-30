@@ -117,7 +117,7 @@ export const verifyGateOTP = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'OTP has expired (valid for 10 minutes). Please request a new OTP.');
   }
 
-  if (stored.otp !== otp.trim()) {
+  if (stored.otp !== otp.toString().trim()) {
     throw new ApiError(400, '❌ Invalid OTP! Please enter the correct 6-digit OTP sent to staff mobile.');
   }
 
