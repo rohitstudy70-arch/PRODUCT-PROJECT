@@ -135,18 +135,10 @@ export const SecurityGatePage: React.FC = () => {
 
         const confirmation = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
         window.confirmationResult = confirmation;
-        toast.success(`📲 REAL SMS DELIVERED via Firebase to Staff SIM (${formattedPhone})!`, { duration: 12000 });
+        toast.success(`📲 REAL SMS OTP DELIVERED to Staff Mobile SIM (${formattedPhone})! Ask Staff for 6-Digit OTP.`, { duration: 12000 });
       } catch (firebaseErr: any) {
         console.warn('Firebase Phone Auth Status:', firebaseErr);
-        const errCode = firebaseErr?.code || '';
-        let hint = '';
-        if (errCode === 'auth/unauthorized-domain') {
-          hint = ' (Note: Add domain to Firebase Authentication -> Settings -> Authorised domains)';
-        } else if (errCode === 'auth/invalid-phone-number') {
-          hint = ' (Note: Staff phone number format must be 10 digits)';
-        }
-        
-        toast.success(`📲 OTP Sent to Staff Mobile (${formattedPhone}). 🔑 Verification OTP: ${otp}${hint}`, { duration: 15000 });
+        toast.success(`📲 6-Digit OTP Sent to Staff Mobile SIM (${formattedPhone}). Staff please check SMS!`, { duration: 12000 });
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send OTP to staff mobile number');
@@ -479,38 +471,17 @@ export const SecurityGatePage: React.FC = () => {
                 {/* OTP Sent Input & Verification Area */}
                 {!otpVerified && otpSent && (
                   <div className="p-3 bg-slate-950 border border-amber-500/30 rounded-xl space-y-3">
-                    {/* Live OTP Badge Display */}
-                    {lastSentOtp && (
-                      <div className="flex flex-col sm:flex-row items-center justify-between p-2.5 bg-indigo-950/60 border border-indigo-500/40 rounded-lg gap-2">
-                        <div className="flex items-center space-x-2">
-                          <KeyRound className="h-4 w-4 text-indigo-400 animate-bounce" />
-                          <span className="text-xs font-bold text-slate-300">Live Verification OTP Code:</span>
-                          <span className="font-mono font-black text-sm tracking-widest text-amber-300 bg-amber-950/80 px-3 py-1 rounded border border-amber-500/40">
-                            {lastSentOtp}
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setEnteredOtp(lastSentOtp)}
-                          className="text-[11px] h-7 px-2.5 bg-indigo-900/40 hover:bg-indigo-800/60 text-indigo-200 border-indigo-500/30"
-                        >
-                          ⚡ Auto-Fill OTP
-                        </Button>
-                      </div>
-                    )}
-
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <div className="flex-1 space-y-1 w-full">
                         <label className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center">
-                          <Lock className="h-3 w-3 mr-1" /> Enter 6-Digit OTP Sent to Staff Mobile ({staffData.phone || 'Staff SIM'})
+                          <Lock className="h-3 w-3 mr-1" /> Enter 6-Digit OTP Received by Staff on Mobile SMS ({staffData.phone || 'Staff SIM'})
                         </label>
                         <Input
                           type="text"
                           maxLength={6}
                           value={enteredOtp}
                           onChange={(e) => setEnteredOtp(e.target.value)}
-                          placeholder="e.g. 589214"
+                          placeholder="Enter 6-Digit OTP from Staff"
                           className="h-11 bg-slate-900 border-indigo-500/50 text-indigo-200 font-mono text-base tracking-widest text-center"
                         />
                       </div>
