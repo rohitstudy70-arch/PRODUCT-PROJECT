@@ -83,11 +83,16 @@ export const sendGateOTP = asyncHandler(async (req, res) => {
 
   const maskedPhone = phone.length >= 10 ? `${phone.slice(0, 3)}****${phone.slice(-3)}` : phone;
 
+  const successMessage = smsResult.success
+    ? `OTP sent successfully to staff registered mobile number (${maskedPhone})`
+    : `OTP generated for (${maskedPhone}). ${smsResult.message || 'Fast2SMS requirement: Add ₹100 credit on Fast2SMS dashboard to enable direct SIM SMS'}`;
+
   res.status(200).json(
-    new ApiResponse(200, `OTP sent successfully to staff registered mobile number (${maskedPhone})`, {
+    new ApiResponse(200, successMessage, {
       phone,
       otp, // Included for live UI testing
       smsMode: smsResult.mode,
+      smsNotice: smsResult.message || null,
       expiresInMinutes: 10
     })
   );
