@@ -4,6 +4,7 @@ import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 import { generatePaginationMeta } from '../../utils/helpers.js';
+import { sendSMS } from '../../utils/smsService.js';
 
 // In-memory OTP cache for gate staff verification
 const gateOtpStore = new Map();
@@ -75,14 +76,18 @@ export const sendGateOTP = asyncHandler(async (req, res) => {
     transferId
   });
 
-  console.log(`📲 [SECURITY GATE OTP] Staff: ${staff.firstName} ${staff.lastName} | Phone: ${phone} | OTP: ${otp}`);
+  // Call SMS Service to send real SMS to Staff's SIM
+  const smsResult = await sendSMS(phone, otp, `${staff.firstName} ${staff.lastName}`);
+
+  console.log(`📲 [SECURITY GATE OTP] Staff: ${staff.firstName} ${staff.lastName} | Phone: ${phone} | OTP: ${otp} | SMS Sent: ${smsResult.mode}`);
 
   const maskedPhone = phone.length >= 10 ? `${phone.slice(0, 3)}****${phone.slice(-3)}` : phone;
 
   res.status(200).json(
     new ApiResponse(200, `OTP sent successfully to staff registered mobile number (${maskedPhone})`, {
       phone,
-      otp, // Provided for live UI verification/testing
+      otp, // Included for live UI testing
+      smsMode: smsResult.mode,
       expiresInMinutes: 10
     })
   );
