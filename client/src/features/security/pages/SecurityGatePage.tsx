@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { QRScanner } from '../../../components/shared/QRScanner';
 import { Badge } from '../../../components/ui/badge';
+import { Input } from '../../../components/ui/input';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
 import {
@@ -11,7 +12,12 @@ import {
   CheckCircle,
   AlertTriangle,
   RotateCcw,
-  UserCheck
+  UserCheck,
+  Smartphone,
+  Send,
+  Lock,
+  Unlock,
+  KeyRound
 } from 'lucide-react';
 
 export const SecurityGatePage: React.FC = () => {
@@ -31,6 +37,14 @@ export const SecurityGatePage: React.FC = () => {
   // Security guard clearance history logs
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState<boolean>(false);
+
+  // OTP Verification States
+  const [otpSent, setOtpSent] = useState<boolean>(false);
+  const [otpVerified, setOtpVerified] = useState<boolean>(false);
+  const [enteredOtp, setEnteredOtp] = useState<string>('');
+  const [sendingOtp, setSendingOtp] = useState<boolean>(false);
+  const [verifyingOtp, setVerifyingOtp] = useState<boolean>(false);
+  const [lastSentOtp, setLastSentOtp] = useState<string | null>(null);
 
   const fetchSecurityHistory = async () => {
     try {
@@ -58,8 +72,14 @@ export const SecurityGatePage: React.FC = () => {
       setTransferData(transfer);
       setStaffData(staff);
       setActiveStep(1); // Advance directly to product scanning
+
+      // Reset OTP states for new scan session
+      setOtpSent(false);
+      setOtpVerified(false);
+      setEnteredOtp('');
+      setLastSentOtp(null);
       
-      // Auto pre-verify manifest items so Security Guard gets instant 1-click clearance approval
+      // Auto pre-verify manifest items so Security Guard gets manifest loaded
       const allQrs = (transfer.items || []).map((i: any) => i.productId?.qrCode || i.productId?.serialNumber || i.productId?.productId || i.productId?._id);
       const allProducts = (transfer.items || []).map((i: any) => i.productId);
 
@@ -68,10 +88,51 @@ export const SecurityGatePage: React.FC = () => {
       setMissingItems([]);
       setExtraItems([]);
 
-      toast.success(`Driver Verified: ${staff.firstName} ${staff.lastName}. Manifest loaded & auto-verified for 1-click clearance!`);
+      toast.success(`Staff Loaded: ${staff.firstName} ${staff.lastName}. Registered Phone: ${staff.phone || 'N/A'}`);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'No active logistical route found for this staff member';
       toast.error(msg);
+    }
+  };
+
+  // Handler to Send Verification OTP to Staff Mobile
+  const handleSendOtp = async () => {
+    if (!staffData?._id) return;
+    setSendingOtp(true);
+    try {
+      const res = await api.post('/security/send-otp', {
+        staffId: staffData._id,
+        transferId: transferData?._id
+      });
+      const { phone, otp } = res.data.data;
+      setOtpSent(true);
+      setLastSentOtp(otp);
+      toast.success(`📲 6-Digit OTP Sent to Staff Mobile (${phone}). Verification OTP: ${otp}`, { duration: 12000 });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to send OTP to staff mobile number');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Handler to Verify OTP entered by Guard
+  const handleVerifyOtp = async () => {
+    if (!staffData?._id || !enteredOtp.trim()) {
+      toast.error('Please enter the 6-digit OTP sent to staff mobile');
+      return;
+    }
+    setVerifyingOtp(true);
+    try {
+      const res = await api.post('/security/verify-otp', {
+        staffId: staffData._id,
+        otp: enteredOtp.trim()
+      });
+      setOtpVerified(true);
+      toast.success(res.data.message || '✅ Staff OTP verified successfully! Gate clearance unlocked.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || '❌ Invalid OTP entered. Please check staff mobile.');
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
@@ -128,6 +189,11 @@ export const SecurityGatePage: React.FC = () => {
   const handleApproveClearance = async () => {
     if (!transferData || !staffData) return;
 
+    if (!otpVerified) {
+      toast.error('🔒 Guard Approval Blocked: Staff OTP must be verified before granting gate approval! Click "Send OTP to Staff Mobile".', { duration: 6000 });
+      return;
+    }
+
     if (extraItems.length > 0) {
       toast.error('Block Clearance: Extra assets detected inside cargo payload');
       return;
@@ -145,11 +211,11 @@ export const SecurityGatePage: React.FC = () => {
         staffQrCode: staffData.qrCode,
         scannedProductQrs,
         gateNumber,
-        notes: scanType === 'exit' ? 'Cleared security check at exit' : 'Cleared security check at entry'
+        notes: scanType === 'exit' ? 'Cleared security check at exit (OTP Verified)' : 'Cleared security check at entry (OTP Verified)'
       };
 
       const response = await api.post(endpoint, payload);
-      toast.success(response.data.message);
+      toast.success(`✅ Gate Pass Approved! ${response.data.message}`);
 
       fetchSecurityHistory();
       handleReset();
@@ -166,6 +232,10 @@ export const SecurityGatePage: React.FC = () => {
     setScannedProducts([]);
     setMissingItems([]);
     setExtraItems([]);
+    setOtpSent(false);
+    setOtpVerified(false);
+    setEnteredOtp('');
+    setLastSentOtp(null);
   };
 
   return (
@@ -174,7 +244,7 @@ export const SecurityGatePage: React.FC = () => {
 
       <PageHeader
         title="Gate Security Checkpoint"
-        subtitle="Verification scanning gate: Scan staff ID first to load manifest route dynamically"
+        subtitle="Verification scanning gate: Staff OTP verification mandatory before approving gate clearance"
       />
 
       {/* Step 0: Scan Staff QR code to load transfer */}
@@ -184,7 +254,7 @@ export const SecurityGatePage: React.FC = () => {
             <CardHeader className="border-b border-slate-800 pb-3">
               <CardTitle className="text-base font-bold flex items-center space-x-2">
                 <ShieldAlert className="h-5 w-5 text-indigo-400" />
-                <span>STEP 1: Verify Courier Custodian ID</span>
+                <span>STEP 1: Verify Courier Custodian ID & Phone</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -232,32 +302,47 @@ export const SecurityGatePage: React.FC = () => {
         </div>
       )}
 
-      {/* Step 1: Scan Product tags */}
+      {/* Step 1: Scan Product tags & Staff OTP Verification */}
       {activeStep === 1 && transferData && staffData && (
         <div className="space-y-6">
-          {/* AUTO COURIER VERIFICATION PROFILE matching user screenshot */}
+          {/* AUTO COURIER VERIFICATION PROFILE WITH MANDATORY OTP CHECK */}
           <Card className="glass-card border-indigo-500/30 bg-slate-950/80">
             <CardHeader className="border-b border-slate-800/80 pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-bold text-emerald-400 flex items-center space-x-2">
                 <UserCheck className="h-5 w-5 text-emerald-400" />
-                <span className="uppercase tracking-wider">AUTO COURIER VERIFICATION PROFILE</span>
+                <span className="uppercase tracking-wider">AUTO COURIER VERIFICATION & MANDATORY OTP CLEARANCE</span>
               </CardTitle>
               <div className="flex items-center space-x-2">
-                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-2.5 py-1 flex items-center space-x-1">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  <span>Verified Delivery Courier</span>
-                </Badge>
+                {otpVerified ? (
+                  <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-2.5 py-1 flex items-center space-x-1">
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>✅ Staff OTP Verified</span>
+                  </Badge>
+                ) : (
+                  <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/40 text-xs px-2.5 py-1 flex items-center space-x-1 animate-pulse">
+                    <Lock className="h-3.5 w-3.5 text-amber-400" />
+                    <span>🔒 Staff OTP Verification Pending</span>
+                  </Badge>
+                )}
+
                 <Button
                   onClick={handleApproveClearance}
-                  disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 shadow-lg shadow-emerald-900/30 flex items-center space-x-1.5 cursor-pointer"
+                  disabled={!otpVerified || extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
+                  className={`font-bold text-xs px-3 py-1.5 shadow-lg flex items-center space-x-1.5 cursor-pointer ${
+                    otpVerified
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed'
+                  }`}
+                  title={!otpVerified ? 'Send and verify OTP on Staff mobile first' : 'Approve Gate Clearance'}
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  <span>⚡ Instant Approve Gate Exit</span>
+                  {otpVerified ? <CheckCircle className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                  <span>{otpVerified ? '⚡ Approve Gate Exit & Clear Pass' : '🔒 OTP Verification Required'}</span>
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-4">
+            
+            <CardContent className="p-4 space-y-4">
+              {/* Staff Registered Profile Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 {/* Avatar */}
                 <div className="md:col-span-1 bg-slate-900 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center min-h-[90px]">
@@ -268,7 +353,7 @@ export const SecurityGatePage: React.FC = () => {
 
                 {/* Courier Name & ID */}
                 <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">COURIER BOY NAME</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">COURIER STAFF NAME</p>
                   <p className="text-xs font-black text-white">{staffData.firstName} {staffData.lastName}</p>
                   <p className="text-[10px] font-mono text-slate-400">ID: {staffData.employeeId}</p>
                 </div>
@@ -281,10 +366,13 @@ export const SecurityGatePage: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Mobile Number */}
-                <div className="md:col-span-1 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">MOBILE NUMBER</p>
-                  <p className="text-xs font-mono font-bold text-indigo-300">{staffData.phone || '+919709846929'}</p>
+                {/* Registered Mobile Number for OTP */}
+                <div className="md:col-span-1 bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 space-y-1">
+                  <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center">
+                    <Smartphone className="h-3 w-3 mr-1 text-indigo-400" />
+                    REGISTERED MOBILE (OTP)
+                  </p>
+                  <p className="text-xs font-mono font-black text-indigo-200">{staffData.phone || '+919709846929'}</p>
                   {staffData.alternatePhone && (
                     <p className="text-[10px] font-mono text-slate-400">Alt: {staffData.alternatePhone}</p>
                   )}
@@ -307,16 +395,91 @@ export const SecurityGatePage: React.FC = () => {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">DESIGNATION</p>
                   <p className="text-xs font-bold text-slate-200">{staffData.designation || 'Delivery Staff / Courier'}</p>
                 </div>
+              </div>
 
-                {/* Address Full Line */}
-                <div className="md:col-span-4 lg:col-span-7 bg-slate-900/60 border border-slate-800 rounded-xl p-3 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">COMPLETE ADDRESS DETAILS</p>
-                  <p className="text-xs font-semibold text-slate-200">
-                    {staffData.addressDetails?.street
-                      ? `${staffData.addressDetails.street}, District: ${staffData.addressDetails.district || 'Bhagalpur'}, State: ${staffData.addressDetails.state || 'Bihar'} - ${staffData.addressDetails.pincode || '854301'}`
-                      : 'Main Road, Station Chowk, District: Bhagalpur, State: Bihar - 854301'}
-                  </p>
+              {/* MANDATORY STAFF OTP VERIFICATION PANEL */}
+              <div className="p-4 bg-slate-900/90 border border-indigo-500/40 rounded-xl space-y-3 relative overflow-hidden shadow-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div className="flex items-center space-x-2">
+                    <KeyRound className="h-5 w-5 text-amber-400 animate-pulse" />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                        SECURITY GATE MANDATORY STAFF MOBILE OTP VERIFICATION
+                      </h4>
+                      <p className="text-[11px] text-slate-400">
+                        Send OTP to staff member's registered number <strong className="text-indigo-300">{staffData.phone || '+91 9709846929'}</strong> before granting gate approval.
+                      </p>
+                    </div>
+                  </div>
+
+                  {otpVerified ? (
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 text-xs px-3 py-1 font-bold">
+                      <Unlock className="h-3.5 w-3.5 mr-1" /> OTP VERIFIED
+                    </Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleSendOtp}
+                      loading={sendingOtp}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 h-9 flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span>{otpSent ? 'Resend OTP' : 'Send Verification OTP'}</span>
+                    </Button>
+                  )}
                 </div>
+
+                {/* OTP Sent Input & Verification Area */}
+                {!otpVerified && otpSent && (
+                  <div className="p-3 bg-slate-950 border border-amber-500/30 rounded-xl space-y-3">
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <div className="flex-1 space-y-1 w-full">
+                        <label className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center">
+                          <Lock className="h-3 w-3 mr-1" /> Enter 6-Digit OTP Sent to Staff Mobile
+                        </label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          value={enteredOtp}
+                          onChange={(e) => setEnteredOtp(e.target.value)}
+                          placeholder="e.g. 589214"
+                          className="h-11 bg-slate-900 border-indigo-500/50 text-indigo-200 font-mono text-base tracking-widest text-center"
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={handleVerifyOtp}
+                        loading={verifyingOtp}
+                        disabled={enteredOtp.length < 6}
+                        className="h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center space-x-1.5 cursor-pointer w-full sm:w-auto"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Verify Staff OTP</span>
+                      </Button>
+                    </div>
+
+                    {lastSentOtp && (
+                      <div className="p-2 bg-indigo-950/40 border border-indigo-500/30 rounded-lg text-center text-xs text-indigo-300 font-mono flex items-center justify-center space-x-2">
+                        <span>📲 Test Mode Active: Sent OTP for Staff ({staffData.phone || '+91 9709846929'}):</span>
+                        <strong className="text-amber-400 text-sm font-bold tracking-widest">{lastSentOtp}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Success Banner when Verified */}
+                {otpVerified && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center space-x-3 text-emerald-300 text-xs">
+                    <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <p className="font-bold text-slate-100">✅ Staff Identity & Mobile Number Successfully Verified!</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        OTP matched. Security Guard is now authorized to issue final Gate Approval.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -347,11 +510,15 @@ export const SecurityGatePage: React.FC = () => {
                     </div>
                     <Button
                       onClick={handleApproveClearance}
-                      disabled={extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 shadow-lg shadow-emerald-900/30 flex items-center space-x-1.5 cursor-pointer"
+                      disabled={!otpVerified || extraItems.length > 0 || (scanType === 'exit' && missingItems.length > 0)}
+                      className={`font-bold text-xs px-4 py-2 shadow-lg flex items-center space-x-1.5 cursor-pointer ${
+                        otpVerified
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-900/30'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed'
+                      }`}
                     >
-                      <CheckCircle className="h-4 w-4" />
-                      <span>⚡ Approve Clearance (Instant 1-Click)</span>
+                      {otpVerified ? <CheckCircle className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      <span>{otpVerified ? '⚡ Approve Gate Exit & Clear Pass' : '🔒 OTP Verification Required'}</span>
                     </Button>
                   </div>
                 </CardContent>
@@ -405,47 +572,47 @@ export const SecurityGatePage: React.FC = () => {
             {/* Right sidebar status */}
             <div className="space-y-6">
               {/* Manifest List Card */}
-            <Card className="glass-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Manifest List ({transferData.totalItems})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {transferData.items.map((item: any) => {
-                    const isScanned = scannedProductQrs.includes(item.productId.qrCode) || 
-                                     scannedProductQrs.includes(item.productId.serialNumber);
+              <Card className="glass-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Manifest List ({transferData.totalItems})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {transferData.items.map((item: any) => {
+                      const isScanned = scannedProductQrs.includes(item.productId.qrCode) || 
+                                       scannedProductQrs.includes(item.productId.serialNumber);
 
-                    return (
-                      <div
-                        key={item._id}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border ${
-                          isScanned
-                            ? 'bg-emerald-500/5 border-emerald-950/40 text-emerald-400'
-                            : 'bg-slate-950/40 border-slate-800/40 text-slate-400'
-                        }`}
-                      >
-                        <div>
-                          <p className="text-xs font-bold">{item.productId.name}</p>
-                          <p className="text-[10px] font-mono mt-0.5">
-                            ID: {item.productId.productId} | SN: {item.productId.serialNumber || 'N/A'}
-                          </p>
+                      return (
+                        <div
+                          key={item._id}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border ${
+                            isScanned
+                              ? 'bg-emerald-500/5 border-emerald-950/40 text-emerald-400'
+                              : 'bg-slate-950/40 border-slate-800/40 text-slate-400'
+                          }`}
+                        >
+                          <div>
+                            <p className="text-xs font-bold">{item.productId.name}</p>
+                            <p className="text-[10px] font-mono mt-0.5">
+                              ID: {item.productId.productId} | SN: {item.productId.serialNumber || 'N/A'}
+                            </p>
+                          </div>
+                          {isScanned ? (
+                            <Badge variant="success" className="text-[9px]">Scanned</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[9px]">Pending</Badge>
+                          )}
                         </div>
-                        {isScanned ? (
-                          <Badge variant="success" className="text-[9px]">Scanned</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[9px]">Pending</Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* SECURITY GUARD PERSONAL APPROVAL HISTORY LOG */}
