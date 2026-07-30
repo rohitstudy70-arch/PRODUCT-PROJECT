@@ -19,15 +19,15 @@ export const Header: React.FC = () => {
 
   const getBreadcrumbs = () => {
     const path = location.pathname;
-    if (path === ROUTES.DASHBOARD) return 'Home / Dashboard';
-    if (path.startsWith(ROUTES.BRANCHES)) return 'Home / Branches';
-    if (path.startsWith(ROUTES.STAFF)) return 'Home / Staff Members';
-    if (path.startsWith(ROUTES.PRODUCTS)) return 'Home / Products';
-    if (path.startsWith(ROUTES.INVENTORY)) return 'Home / Inventory';
-    if (path.startsWith(ROUTES.TRANSFERS)) return 'Home / Asset Transfers';
-    if (path.startsWith(ROUTES.SECURITY)) return 'Home / Security Gate';
-    if (path.startsWith(ROUTES.RECEIVING)) return 'Home / Branch Receiving';
-    if (path.startsWith(ROUTES.AUDIT)) return 'Home / Audit Log Trail';
+    if (path === ROUTES.DASHBOARD) return 'Home › Dashboard';
+    if (path.startsWith(ROUTES.BRANCHES)) return 'Home › Branches';
+    if (path.startsWith(ROUTES.STAFF)) return 'Home › Staff Members';
+    if (path.startsWith(ROUTES.PRODUCTS)) return 'Home › Products';
+    if (path.startsWith(ROUTES.INVENTORY)) return 'Home › Inventory';
+    if (path.startsWith(ROUTES.TRANSFERS)) return 'Home › Asset Transfers';
+    if (path.startsWith(ROUTES.SECURITY)) return 'Home › Security Gate';
+    if (path.startsWith(ROUTES.RECEIVING)) return 'Home › Branch Receiving';
+    if (path.startsWith(ROUTES.AUDIT)) return 'Home › Audit Log Trail';
     return 'Home';
   };
 
@@ -36,16 +36,9 @@ export const Header: React.FC = () => {
     : user?.branchId ? user.branchId.name : 'Central Head Office';
 
   return (
-    <header className="h-16 border-b border-border bg-card/40 backdrop-blur-md px-6 flex items-center justify-between relative z-20">
-      {/* Left Breadcrumbs & location */}
+    <header className="h-16 gradient-border-b bg-card/40 backdrop-blur-md px-6 flex items-center justify-between relative z-20">
       <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSidebar}
-          className="md:hidden text-slate-400 hover:text-slate-100 mr-3"
-          title="Open Menu"
-        >
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden text-slate-400 hover:text-slate-100 mr-3" title="Open Menu">
           <Menu className="h-5 w-5" />
         </Button>
         <div>
@@ -55,7 +48,6 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Right User metadata + Settings */}
       <div className="flex items-center space-x-4">
         {user && (
           <>
@@ -65,27 +57,14 @@ export const Header: React.FC = () => {
                 <span>LIVE DUTY GPS ON</span>
               </div>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowScannerModal(true)}
-              className="flex items-center space-x-1.5 text-xs border-indigo-500/50 hover:border-indigo-400 text-indigo-300 bg-indigo-950/50 hover:bg-indigo-900/60 cursor-pointer shadow-sm"
-              title="Scan any Barcode, IMEI, Serial No, or RFID Tag"
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowScannerModal(true)} className="flex items-center space-x-1.5 text-xs border-indigo-500/50 hover:border-indigo-400 text-indigo-300 bg-indigo-950/50 hover:bg-indigo-900/60 cursor-pointer shadow-sm glow-indigo" title="Scan any Barcode, IMEI, Serial No, or RFID Tag">
               <Scan className="h-4 w-4 text-indigo-400 animate-pulse" />
               <span className="hidden sm:inline font-bold">Scan Product</span>
             </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowIdCard(true)}
-              className="flex items-center space-x-1.5 text-xs border-indigo-500/30 hover:border-indigo-500 text-indigo-400 bg-indigo-600/5 hover:bg-indigo-600/10 cursor-pointer"
-            >
+            <Button variant="outline" size="sm" onClick={() => setShowIdCard(true)} className="flex items-center space-x-1.5 text-xs border-indigo-500/30 hover:border-indigo-500 text-indigo-400 bg-indigo-600/5 hover:bg-indigo-600/10 cursor-pointer">
               <QrCode className="h-4 w-4" />
               <span className="hidden sm:inline">My ID Card</span>
             </Button>
-
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold text-slate-400">
                 Logged in: <span className="text-indigo-400">{branchName}</span>
@@ -96,65 +75,40 @@ export const Header: React.FC = () => {
             </div>
           </>
         )}
-
         <ThemeToggle />
       </div>
 
-      {/* Digital ID Card Dialog */}
       <Dialog isOpen={showIdCard} onClose={() => setShowIdCard(false)} title="Digital Staff ID Card">
         {user && (
           <div className="flex flex-col items-center justify-center p-4 text-slate-200">
-            {/* The ID Card Container */}
-            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl relative">
-              {/* Card top banner */}
+            <div className="w-full max-w-sm glass-card-premium rounded-xl overflow-hidden shadow-2xl relative">
               <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-              
               <div className="p-6 flex flex-col items-center text-center space-y-4">
-                {/* Header branding */}
                 <div>
                   <h3 className="text-sm font-extrabold tracking-wider text-slate-400 uppercase">ARSHI ENTERPRISE</h3>
                   <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Staff Identity Card</p>
                 </div>
-
-                {/* Avatar / Profile Initial */}
                 <div className="h-16 w-16 rounded-full bg-indigo-600/20 text-indigo-400 font-bold flex items-center justify-center border border-indigo-500/30 text-2xl uppercase">
                   {user.firstName[0]}
                 </div>
-
-                {/* Staff Details */}
                 <div>
                   <h4 className="text-base font-bold text-slate-100">{`${user.firstName} ${user.lastName}`}</h4>
                   <p className="text-xs text-indigo-400 font-semibold uppercase tracking-wider mt-0.5">{user.role.replace('_', ' ')}</p>
                   <p className="text-[10px] text-slate-500 font-mono mt-1">Employee ID: {user.employeeId}</p>
                 </div>
-
-                {/* QR Code Container */}
                 <div className="p-3 bg-white rounded-lg shadow-inner flex items-center justify-center">
-                  <QRCode 
-                    value={user.qrCode || user.employeeId} 
-                    size={140}
-                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                  />
+                  <QRCode value={user.qrCode || user.employeeId} size={140} style={{ height: "auto", maxWidth: "100%", width: "100%" }} />
                 </div>
-
                 <div className="text-[9px] text-slate-500 font-medium">
                   Scan this code at security checkpoints for entry/exit clearance
                 </div>
               </div>
             </div>
-
-            <Button onClick={() => setShowIdCard(false)} className="mt-5 w-full max-w-sm">
-              Close ID Card
-            </Button>
+            <Button onClick={() => setShowIdCard(false)} className="mt-5 w-full max-w-sm">Close ID Card</Button>
           </div>
         )}
       </Dialog>
-
-      {/* Universal Product & IMEI Scanner Modal */}
-      <UniversalProductScannerModal
-        isOpen={showScannerModal}
-        onClose={() => setShowScannerModal(false)}
-      />
+      <UniversalProductScannerModal isOpen={showScannerModal} onClose={() => setShowScannerModal(false)} />
     </header>
   );
 };

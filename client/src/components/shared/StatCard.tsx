@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface StatCardProps {
@@ -27,13 +27,15 @@ export const StatCard: React.FC<StatCardProps> = ({
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ duration: 0.2 }}
+      className="hover:glow-indigo rounded-xl"
     >
-      <Card className="glass-card shadow-lg hover:shadow-indigo-500/5 transition-all duration-300">
+      <Card className="glass-card-premium shadow-lg hover:shadow-indigo-500/10 transition-all duration-300">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">{title}</p>
-            <div className={`p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 ${colorClass}`}>
-              <Icon className="h-5 w-5" />
+            <div className={`p-2 rounded-lg bg-slate-100/50 dark:bg-slate-800/80 shadow-[0_0_15px_rgba(0,0,0,0.1)] relative overflow-hidden ${colorClass}`}>
+              <div className="absolute inset-0 opacity-20 bg-current blur-md"></div>
+              <Icon className="h-5 w-5 relative z-10" />
             </div>
           </div>
           <div className="mt-4">
@@ -41,14 +43,17 @@ export const StatCard: React.FC<StatCardProps> = ({
             {trend && (
               <p className="mt-1 text-xs flex items-center">
                 <span
-                  className={
+                  className={`flex items-center ${
                     trend.type === 'up'
                       ? 'text-emerald-400'
                       : trend.type === 'down'
                       ? 'text-red-400'
                       : 'text-slate-400'
-                  }
+                  }`}
                 >
+                  {trend.type === 'up' && <TrendingUp className="w-3 h-3 mr-1" />}
+                  {trend.type === 'down' && <TrendingDown className="w-3 h-3 mr-1" />}
+                  {trend.type === 'neutral' && <Minus className="w-3 h-3 mr-1" />}
                   {trend.value}
                 </span>
                 <span className="text-slate-500 ml-1.5">{description || 'vs last month'}</span>

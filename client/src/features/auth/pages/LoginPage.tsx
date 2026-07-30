@@ -10,6 +10,7 @@ import { ROUTES } from '../../../config/routes';
 import api, { CLOUD_SERVER_URL, getBaseURL } from '../../../config/api';
 import { Toaster, toast } from 'sonner';
 import { Mail, Lock, LogIn, Settings, Zap, Check, Server, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('admin@arshi.com');
@@ -132,15 +133,15 @@ export const LoginPage: React.FC = () => {
   return (
     <>
       <Toaster position="top-right" theme="dark" closeButton />
-      <Card className="border-0 bg-transparent shadow-none relative">
+      <Card className="scale-in border-0 bg-transparent shadow-none relative">
         {/* Top Header Server Switcher Badge */}
         <div className="flex items-center justify-between mb-4">
           <Badge
             variant="outline"
             className={`text-[10px] px-2.5 py-1 font-mono flex items-center space-x-1 cursor-pointer transition-all ${
               isLocalServer
-                ? 'border-emerald-500/40 text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50'
-                : 'border-indigo-500/40 text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/50'
+                ? 'border-emerald-500/40 text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 hover:glow-emerald'
+                : 'border-indigo-500/40 text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/50 hover:glow-indigo'
             }`}
             onClick={() => setServerModalOpen(true)}
             title="Click to configure Local Server IP or Cloud Server"
@@ -158,9 +159,16 @@ export const LoginPage: React.FC = () => {
           </button>
         </div>
 
-        <CardHeader className="p-0 pb-4 text-center">
-          <CardTitle className="text-xl font-bold text-slate-100">Access Account</CardTitle>
-          <CardDescription className="text-xs text-slate-400">
+        <CardHeader className="p-0 pb-4 text-center flex flex-col items-center">
+          <motion.div 
+            animate={{ y: [-4, 4, -4] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/20"
+          >
+            <span className="text-2xl font-bold text-white tracking-tighter">AE</span>
+          </motion.div>
+          <CardTitle className="text-2xl font-extrabold text-slate-100 text-gradient">Access Account</CardTitle>
+          <CardDescription className="text-xs text-slate-400 mt-1">
             Sign in with your enterprise credentials
           </CardDescription>
         </CardHeader>

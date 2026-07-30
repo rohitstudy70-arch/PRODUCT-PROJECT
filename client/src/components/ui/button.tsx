@@ -3,7 +3,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'glass';
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'glass' | 'premium';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   loading?: boolean;
 }
@@ -13,12 +13,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyles = "inline-flex items-center justify-center rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
     
     const variants = {
-      default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/25",
+      default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/25 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-500/20",
       destructive: "bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-600/25",
       outline: "border border-slate-700 bg-transparent hover:bg-slate-800 text-slate-200",
       secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700",
       ghost: "hover:bg-slate-800/80 text-slate-300 hover:text-slate-100",
-      glass: "glass text-indigo-400 hover:bg-indigo-600/10 hover:text-indigo-300"
+      glass: "glass text-indigo-400 hover:bg-indigo-600/10 hover:text-indigo-300",
+      premium: "bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:glow-indigo shadow-md transition-all duration-200"
     }
 
     const sizes = {
