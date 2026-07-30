@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAux2ojeisci0VWVtUAvQWuftE3GeM1Z28",
+  apiKey: "AIzaSyAuX2oje1sc1oVWVtUAvQWuftE3GeM1Z28",
   authDomain: "arshi-enterprise.firebaseapp.com",
   projectId: "arshi-enterprise",
   storageBucket: "arshi-enterprise.firebasestorage.app",
