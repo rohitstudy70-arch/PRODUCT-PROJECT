@@ -1,86 +1,15 @@
-import admin from 'firebase-admin';
-
-let isFirebaseInitialized = false;
-
-function initFirebase() {
-  if (isFirebaseInitialized || (admin.apps && admin.apps.length > 0)) {
-    isFirebaseInitialized = true;
-    return true;
-  }
-
-  // Support 1: Single FIREBASE_SERVICE_ACCOUNT JSON string (Easiest for Render)
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      const serviceAccount = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
-        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-        : process.env.FIREBASE_SERVICE_ACCOUNT;
-
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      isFirebaseInitialized = true;
-      console.log('🔥 [FIREBASE ADMIN SDK] Connected via FIREBASE_SERVICE_ACCOUNT JSON for 10,000 FREE SMS/month!');
-      return true;
-    } catch (e) {
-      console.error('❌ [FIREBASE SERVICE ACCOUNT PARSE ERROR]:', e.message);
-    }
-  }
-
-  // Support 2: Individual variables
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-  if (projectId && clientEmail && privateKey) {
-    try {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey
-        })
-      });
-      isFirebaseInitialized = true;
-      console.log('🔥 [FIREBASE ADMIN SDK] Connected to Arshi-Enterprise for 10,000 FREE SMS/month!');
-      return true;
-    } catch (e) {
-      console.error('❌ [FIREBASE INIT ERROR]:', e.message);
-      return false;
-    }
-  }
-  return false;
-}
+import axios from 'axios';
 
 /**
- * Sends a real SMS to the staff's mobile number via Firebase / Fast2SMS SMS Gateway.
+ * Sends a real SMS to the staff's mobile SIM card via Fast2SMS SMS Gateway.
  */
 export const sendSMS = async (phone, otp, staffName = 'Staff') => {
   const cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
-  const formattedPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : phone;
-
-  // Initialize Firebase Admin
-  const firebaseReady = initFirebase();
-
-  if (firebaseReady) {
-    try {
-      console.log(`🔥 [FIREBASE FREE SMS ROUTE] Dispatching 6-Digit OTP (${otp}) to Staff SIM (${formattedPhone})...`);
-      return {
-        success: true,
-        mode: 'firebase_free',
-        message: `OTP sent via Firebase Free SMS (10,000 Free SMS quota active) to ${formattedPhone}`
-      };
-    } catch (firebaseErr) {
-      console.error('❌ [FIREBASE SMS ERROR]:', firebaseErr.message);
-    }
-  }
-
-  // Fallback to Fast2SMS Gateway if configured
   const apiKey = process.env.FAST2SMS_API_KEY || process.env.SMS_API_KEY;
 
   if (!apiKey || apiKey.includes('your_fast2sms')) {
-    console.log(`📱 [SMS SERVICE - DEMO MODE] Real SMS sent to ${cleanPhone}. OTP: ${otp}`);
-    return { success: true, mode: 'mock', message: 'Demo mode active.' };
+    console.log(`📱 [FAST2SMS DEMO MODE] SMS to ${cleanPhone}: OTP ${otp}`);
+    return { success: true, mode: 'mock', message: 'Demo mode active. Add FAST2SMS_API_KEY in .env for real SMS' };
   }
 
   try {
@@ -91,25 +20,24 @@ export const sendSMS = async (phone, otp, staffName = 'Staff') => {
       const res = await fetch(url);
       responseData = await res.json();
     } else {
-      const axios = (await import('axios')).default;
       const res = await axios.get(url);
       responseData = res.data;
     }
 
     if (responseData.return === true || responseData.status_code === 200) {
-      console.log(`✅ [REAL SMS DELIVERED TO ${cleanPhone}] Fast2SMS Response:`, responseData);
+      console.log(`✅ [FAST2SMS REAL SMS DELIVERED] Sent to ${cleanPhone}! Response:`, responseData);
       return { success: true, mode: 'real', response: responseData };
     } else {
-      console.warn(`⚠️ [FAST2SMS GATEWAY NOTICE]: ${responseData.message}`);
+      console.warn(`⚠️ [FAST2SMS GATEWAY RESPONSE]: ${responseData.message || JSON.stringify(responseData)}`);
       return {
         success: false,
-        mode: 'restricted',
-        message: responseData.message || 'Fast2SMS API requires ₹100 add credit',
+        mode: 'fast2sms_notice',
+        message: responseData.message || 'Fast2SMS requirement: Add ₹100 credit on Fast2SMS dashboard to enable SMS',
         responseData
       };
     }
   } catch (error) {
-    console.error('❌ [SMS GATEWAY ERROR]:', error.message || error);
+    console.error('❌ [FAST2SMS GATEWAY ERROR]:', error.message || error);
     return { success: false, error: error.message };
   }
 };
