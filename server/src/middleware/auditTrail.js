@@ -14,9 +14,20 @@ export const auditTrail = (moduleName, actionName) => {
         const branchId = req.user ? req.user.branchId : null;
         const organizationId = req.user ? req.user.organizationId : null;
 
-        let description = `${userName} performed ${actionName} on ${moduleName}`;
-        if (req.params.id) {
-          description += ` (ID: ${req.params.id})`;
+        let description = `${userName} (${userRole.replace('_', ' ')}) performed ${actionName} on ${moduleName}`;
+
+        if (moduleName === 'product' && actionName === 'create' && req.body?.name) {
+          description = `${userName} registered new Product asset "${req.body.name}" (Serial: ${req.body.serialNumber || 'N/A'}, Rack: ${req.body.rackNumber || 'RACK-01'})`;
+        } else if (moduleName === 'product' && actionName === 'update' && req.body?.name) {
+          description = `${userName} updated Product asset details for "${req.body.name}" (Rack: ${req.body.rackNumber || 'RACK-01'})`;
+        } else if (moduleName === 'staff' && actionName === 'create' && req.body?.firstName) {
+          description = `${userName} created new Staff member account for ${req.body.firstName} ${req.body.lastName} (Role: ${req.body.role})`;
+        } else if (moduleName === 'staff' && actionName === 'update' && req.body?.firstName) {
+          description = `${userName} updated Staff profile for ${req.body.firstName} ${req.body.lastName}`;
+        } else if (moduleName === 'transfer' && actionName === 'assign_imei') {
+          description = `${userName} assigned Product to Courier for Transfer (Reason: ${req.body.reason || 'Branch Transfer'})`;
+        } else if (req.params.id) {
+          description += ` (Ref ID: ${req.params.id})`;
         }
 
         await AuditLog.create({

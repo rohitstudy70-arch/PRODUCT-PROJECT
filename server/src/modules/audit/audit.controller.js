@@ -4,12 +4,23 @@ import asyncHandler from '../../utils/asyncHandler.js';
 import { generatePaginationMeta } from '../../utils/helpers.js';
 
 export const getAuditLogs = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, module, action, userId } = req.query;
+  const { page = 1, limit = 20, module, action, userId, branchId, search } = req.query;
 
   const query = {};
-  if (module) query.module = module;
-  if (action) query.action = action;
+  if (module && module !== 'all') query.module = module;
+  if (action && action !== 'all') query.action = action;
   if (userId) query.userId = userId;
+  if (branchId && branchId !== 'all') query.branchId = branchId;
+
+  if (search) {
+    query.$or = [
+      { userName: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+      { action: { $regex: search, $options: 'i' } },
+      { module: { $regex: search, $options: 'i' } },
+      { userRole: { $regex: search, $options: 'i' } }
+    ];
+  }
 
   const skip = (page - 1) * limit;
   const total = await AuditLog.countDocuments(query);
