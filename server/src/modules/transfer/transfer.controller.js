@@ -263,6 +263,15 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Transfer is not ready for gate dispatch');
   }
 
+  // Security Guard Branch Isolation Check
+  if (req.user.role === 'security_guard' && req.user.branchId) {
+    const guardBranchId = (req.user.branchId._id || req.user.branchId).toString();
+    const transferFromBranchId = (transfer.fromBranchId._id || transfer.fromBranchId).toString();
+    if (transferFromBranchId !== guardBranchId) {
+      throw new ApiError(403, '❌ SECURITY GATE DENIED: You can ONLY perform gate exit scans for transfers starting from your own branch');
+    }
+  }
+
   // Step 1: Scan & Verify Staff QR
   const staff = await Staff.findOne({
     $or: [{ qrCode: staffQrCode }, { rfidCard: staffQrCode }, { employeeId: staffQrCode }]
@@ -710,6 +719,23 @@ export const getActiveTransferByStaff = asyncHandler(async (req, res) => {
 
   if (!transfer) {
     throw new ApiError(404, `No active transfer manifest found for driver ${staff.firstName} ${staff.lastName}`);
+  }
+
+  // Security Guard Branch Isolation Check: Guard can only scan at their assigned branch
+  if (req.user.role === 'security_guard' && req.user.branchId) {
+    const guardBranchId = (req.user.branchId._id || req.user.branchId).toString();
+    const transferFromBranchId = (transfer.fromBranchId._id || transfer.fromBranchId).toString();
+    const transferToBranchId = (transfer.toBranchId._id || transfer.toBranchId).toString();
+
+    if (type === 'exit' && transferFromBranchId !== guardBranchId) {
+      const guardBranchName = typeof req.user.branchId === 'object' ? req.user.branchId.name : 'Your Assigned Branch';
+      throw new ApiError(403, `❌ SECURITY GATE DENIED: You are assigned to Security Gate at ${guardBranchName}. You CANNOT perform gate exit scan for transfers starting from another branch (${transfer.fromBranchId?.name || 'Other Branch'}).`);
+    }
+
+    if (type === 'entry' && transferToBranchId !== guardBranchId) {
+      const guardBranchName = typeof req.user.branchId === 'object' ? req.user.branchId.name : 'Your Assigned Branch';
+      throw new ApiError(403, `❌ SECURITY GATE DENIED: You are assigned to Security Gate at ${guardBranchName}. You CANNOT perform gate entry scan for transfers arriving at another branch (${transfer.toBranchId?.name || 'Other Branch'}).`);
+    }
   }
 
   // Populate manifest items
