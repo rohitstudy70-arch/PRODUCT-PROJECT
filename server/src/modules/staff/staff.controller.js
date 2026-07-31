@@ -90,7 +90,8 @@ export const getAllStaff = asyncHandler(async (req, res) => {
       { email: { $regex: search, $options: 'i' } },
       { employeeId: { $regex: search, $options: 'i' } },
       { phone: { $regex: search, $options: 'i' } },
-      { aadharNumber: { $regex: search, $options: 'i' } }
+      { aadharNumber: { $regex: search, $options: 'i' } },
+      { rfidCard: { $regex: search, $options: 'i' } }
     ];
   }
 
@@ -139,7 +140,8 @@ export const updateStaff = asyncHandler(async (req, res) => {
     designation,
     addressDetails,
     role,
-    branchId
+    branchId,
+    rfidCard
   } = req.body;
 
   const staff = await Staff.findById(req.params.id);
@@ -159,6 +161,17 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (role) staff.role = role;
   if (branchId !== undefined) staff.branchId = branchId || null;
   if (addressDetails) staff.addressDetails = addressDetails;
+  
+  if (rfidCard !== undefined) {
+    const cleanRfid = rfidCard ? rfidCard.trim() : null;
+    if (cleanRfid) {
+      const existing = await Staff.findOne({ rfidCard: cleanRfid, _id: { $ne: staff._id } });
+      if (existing) {
+        throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
+      }
+    }
+    staff.rfidCard = cleanRfid;
+  }
 
   await staff.save();
 
@@ -306,4 +319,42 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
 
   await staff.save();
   res.status(200).json(new ApiResponse(200, `Duty status updated to ${staff.dutyStatus}`, staff));
+});
+
+export const scanStaffRfid = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    throw new ApiError(400, 'RFID Card ID or Employee ID code is required');
+  }
+
+  const cleanCode = code.trim();
+  
+  // Search by rfidCard, employeeId, or qrCode
+  const staff = await Staff.findOne({
+    $or: [
+      { rfidCard: cleanCode },
+      { employeeId: { $regex: `^${cleanCode}$`, $options: 'i' } },
+      { qrCode: cleanCode }
+    ],
+    isDeleted: { $ne: true }
+  })
+    .populate('branchId', 'name code')
+    .populate('currentBranchId', 'name code')
+    .select('-password');
+
+  if (!staff) {
+    throw new ApiError(404, `No staff member found matching RFID/ID Card: ${cleanCode}`);
+  }
+
+  // Fetch staff's currently assigned active in-transit products
+  const Product = (await import('../product/product.model.js')).default;
+  const activeAssignedProducts = await Product.find({
+    currentHolderId: staff._id,
+    isDeleted: { $ne: true }
+  }).select('productId modelName serialNumber imei status currentBranchId updatedAt');
+
+  res.status(200).json(new ApiResponse(200, 'Staff identified successfully via RFID Card', {
+    staff,
+    activeAssignedProducts
+  }));
 });

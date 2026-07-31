@@ -8,7 +8,8 @@ import {
   assignBranch,
   assignRole,
   generateStaffQR,
-  toggleStaffDutyStatus
+  toggleStaffDutyStatus,
+  scanStaffRfid
 } from './staff.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
@@ -17,6 +18,9 @@ import { auditTrail } from '../../middleware/auditTrail.js';
 const router = Router();
 
 router.use(authenticate);
+
+// Scan Staff RFID Card Terminal (Accessible to Super Admin & Branch Admin)
+router.post('/scan-rfid', authorize('super_admin', 'branch_admin'), scanStaffRfid);
 
 // List/view staff is allowed for super_admin and branch_admin
 router.get('/', authorize('super_admin', 'branch_admin'), getAllStaff);

@@ -6,9 +6,10 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { Button } from '../components/ui/button';
 import { Dialog } from '../components/ui/dialog';
-import { Menu, QrCode, Scan } from 'lucide-react';
+import { Menu, QrCode, Scan, CreditCard } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { UniversalProductScannerModal } from '../components/shared/UniversalProductScannerModal';
+import { StaffRFIDTerminalModal } from '../components/shared/StaffRFIDTerminalModal';
 
 export const Header: React.FC = () => {
   const location = useLocation();
@@ -16,6 +17,7 @@ export const Header: React.FC = () => {
   const { toggleSidebar } = useUIStore();
   const [showIdCard, setShowIdCard] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showStaffRfidModal, setShowStaffRfidModal] = useState(false);
 
   const getBreadcrumbs = () => {
     const path = location.pathname;
@@ -48,7 +50,7 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         {user && (
           <>
             {user.dutyStatus === 'ON_DUTY' && (
@@ -57,8 +59,12 @@ export const Header: React.FC = () => {
                 <span>LIVE DUTY GPS ON</span>
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={() => setShowScannerModal(true)} className="flex items-center space-x-1.5 text-xs border-indigo-500/50 hover:border-indigo-400 text-indigo-300 bg-indigo-950/50 hover:bg-indigo-900/60 cursor-pointer shadow-sm glow-indigo" title="Scan any Barcode, IMEI, Serial No, or RFID Tag">
-              <Scan className="h-4 w-4 text-indigo-400 animate-pulse" />
+            <Button variant="outline" size="sm" onClick={() => setShowStaffRfidModal(true)} className="flex items-center space-x-1.5 text-xs border-indigo-500/50 hover:border-indigo-400 text-indigo-300 bg-indigo-950/50 hover:bg-indigo-900/60 cursor-pointer shadow-sm glow-indigo" title="Scan Staff RFID Smart Card for Attendance & Duty">
+              <CreditCard className="h-4 w-4 text-indigo-400 animate-pulse" />
+              <span className="hidden sm:inline font-bold">Staff RFID</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowScannerModal(true)} className="flex items-center space-x-1.5 text-xs border-slate-700 hover:border-slate-600 text-slate-300 bg-slate-900/60 hover:bg-slate-800 cursor-pointer" title="Scan any Barcode, IMEI, Serial No">
+              <Scan className="h-4 w-4 text-slate-400" />
               <span className="hidden sm:inline font-bold">Scan Product</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowIdCard(true)} className="flex items-center space-x-1.5 text-xs border-indigo-500/30 hover:border-indigo-500 text-indigo-400 bg-indigo-600/5 hover:bg-indigo-600/10 cursor-pointer">
@@ -109,6 +115,7 @@ export const Header: React.FC = () => {
         )}
       </Dialog>
       <UniversalProductScannerModal isOpen={showScannerModal} onClose={() => setShowScannerModal(false)} />
+      <StaffRFIDTerminalModal isOpen={showStaffRfidModal} onClose={() => setShowStaffRfidModal(false)} />
     </header>
   );
 };
