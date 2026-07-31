@@ -130,6 +130,7 @@ export const LiveTrackingPage: React.FC = () => {
   }, []);
 
   const filteredStaff = activeStaffList.filter(item => {
+    if (!item.staff || item.staff.role !== 'staff') return false;
     const fullName = `${item.staff.firstName} ${item.staff.lastName}`.toLowerCase();
     const empId = (item.staff.employeeId || '').toLowerCase();
     const q = search.toLowerCase();

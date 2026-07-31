@@ -197,6 +197,9 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
 
 // GET /api/v1/tracking/active - Fetch all currently active duty staff with live positions (Courier Boys ONLY)
 export const getActiveDutyStaff = asyncHandler(async (req, res) => {
+  // Clean up any legacy non-courier staff dutyStatus in database
+  await Staff.updateMany({ role: { $ne: 'staff' } }, { dutyStatus: 'OFF_DUTY', activeDutySessionId: null });
+
   const query = { dutyStatus: 'ON_DUTY', role: 'staff' };
 
   // Branch Admins only see staff assigned to their own branch
