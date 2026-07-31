@@ -261,3 +261,39 @@ export const generateStaffQR = asyncHandler(async (req, res) => {
 
   res.status(200).json(new ApiResponse(200, 'Staff QR Code generated successfully', qrDoc));
 });
+
+export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
+  const staff = await Staff.findById(req.params.id);
+  if (!staff) {
+    throw new ApiError(404, 'Staff member not found');
+  }
+
+  const DutySession = (await import('../tracking/dutySession.model.js')).default;
+
+  if (staff.dutyStatus === 'ON_DUTY') {
+    staff.dutyStatus = 'OFF_DUTY';
+    const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+    if (activeSession) {
+      activeSession.status = 'COMPLETED';
+      activeSession.endTime = new Date();
+      await activeSession.save();
+    }
+    staff.activeDutySessionId = null;
+  } else {
+    staff.dutyStatus = 'ON_DUTY';
+    let activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+    if (!activeSession) {
+      activeSession = await DutySession.create({
+        organizationId: staff.organizationId,
+        staffId: staff._id,
+        branchId: staff.branchId,
+        status: 'ON_DUTY',
+        startTime: new Date()
+      });
+    }
+    staff.activeDutySessionId = activeSession._id;
+  }
+
+  await staff.save();
+  res.status(200).json(new ApiResponse(200, `Duty status updated to ${staff.dutyStatus}`, staff));
+});

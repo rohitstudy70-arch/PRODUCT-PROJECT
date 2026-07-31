@@ -7,7 +7,8 @@ import {
   deleteStaff,
   assignBranch,
   assignRole,
-  generateStaffQR
+  generateStaffQR,
+  toggleStaffDutyStatus
 } from './staff.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
@@ -28,6 +29,7 @@ router.delete('/:id', authorize('super_admin'), auditTrail('staff', 'delete'), d
 
 router.patch('/:id/assign-branch', authorize('super_admin'), auditTrail('staff', 'assign_branch'), assignBranch);
 router.patch('/:id/assign-role', authorize('super_admin'), auditTrail('staff', 'assign_role'), assignRole);
+router.patch('/:id/toggle-duty', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'toggle_duty'), toggleStaffDutyStatus);
 
 // QR Code generation is strictly restricted to SUPER_ADMIN (Organization Head Office)
 router.post('/:id/generate-qr', authorize('super_admin'), auditTrail('staff', 'generate_qr'), generateStaffQR);
