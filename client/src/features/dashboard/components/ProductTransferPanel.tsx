@@ -490,11 +490,16 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                     className="flex h-11 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="">Select courier for transfer...</option>
-                    {availableCouriers.map(s => (
-                      <option key={s._id} value={s._id}>
-                        {`${s.firstName} ${s.lastName} ${s.fatherName ? `(S/O ${s.fatherName})` : ''} | Mob: ${s.phone || 'N/A'} | Aadhar: ${s.aadharNumber || 'N/A'}`}
-                      </option>
-                    ))}
+                    {availableCouriers.map(s => {
+                      const homeBranch = s.branchId?.name || 'Head Office';
+                      const currentBranch = s.currentBranchId?.name || homeBranch;
+                      const locText = currentBranch === homeBranch ? `📍 At: ${homeBranch}` : `📍 Currently AT: ${currentBranch} (Home: ${homeBranch})`;
+                      return (
+                        <option key={s._id} value={s._id}>
+                          {`${s.firstName} ${s.lastName} ${s.fatherName ? `(S/O ${s.fatherName})` : ''} | ${locText} | Mob: ${s.phone || 'N/A'}`}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -557,6 +562,16 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                         <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-850">
                           <span className="text-[9px] font-bold text-slate-500 uppercase">Designation</span>
                           <p className="text-slate-200 font-semibold">{selectedCourierDetails.designation || 'Delivery Staff / Courier'}</p>
+                        </div>
+
+                        <div className="bg-slate-900/60 p-2 rounded-lg border border-amber-500/30">
+                          <span className="text-[9px] font-bold text-amber-400 uppercase block">📍 Physical Branch Location</span>
+                          <p className="text-amber-300 font-bold text-xs truncate">
+                            {selectedCourierDetails.currentBranchId?.name || selectedCourierDetails.branchId?.name || 'Central Head Office'}
+                          </p>
+                          {selectedCourierDetails.currentBranchId && selectedCourierDetails.branchId && selectedCourierDetails.currentBranchId._id !== selectedCourierDetails.branchId._id && (
+                            <p className="text-[9px] text-slate-400 font-mono">Home: {selectedCourierDetails.branchId.name}</p>
+                          )}
                         </div>
 
                         <div className="col-span-2 md:col-span-3 bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">

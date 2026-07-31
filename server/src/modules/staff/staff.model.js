@@ -12,6 +12,10 @@ const staffSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Branch'
     },
+    currentBranchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch'
+    },
     employeeId: {
       type: String,
       unique: true,

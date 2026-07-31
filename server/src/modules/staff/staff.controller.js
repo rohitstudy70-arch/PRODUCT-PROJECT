@@ -48,6 +48,7 @@ export const createStaff = asyncHandler(async (req, res) => {
   const staff = await Staff.create({
     organizationId: req.user.organizationId,
     branchId: branchId || null,
+    currentBranchId: branchId || null,
     employeeId,
     firstName,
     lastName,
@@ -70,12 +71,16 @@ export const createStaff = asyncHandler(async (req, res) => {
 });
 
 export const getAllStaff = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search = '', role, branchId, status } = req.query;
+  const { page = 1, limit = 10, search = '', role, branchId, currentBranchId, status } = req.query;
 
   const query = { isDeleted: { $ne: true } };
 
   if (role) query.role = role;
-  if (branchId) query.branchId = branchId;
+  if (currentBranchId) {
+    query.$or = [{ currentBranchId: currentBranchId }, { branchId: currentBranchId }, { currentBranchId: null }];
+  } else if (branchId) {
+    query.branchId = branchId;
+  }
   if (status) query.status = status;
 
   if (search) {
@@ -93,6 +98,7 @@ export const getAllStaff = asyncHandler(async (req, res) => {
   const total = await Staff.countDocuments(query);
   const staffList = await Staff.find(query)
     .populate('branchId', 'name code')
+    .populate('currentBranchId', 'name code')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit, 10));
@@ -108,7 +114,11 @@ export const getAllStaff = asyncHandler(async (req, res) => {
 });
 
 export const getStaffById = asyncHandler(async (req, res) => {
-  const staff = await Staff.findById(req.params.id).populate('branchId', 'name code');
+  const staff = await Staff.findById(req.params.id)
+    .populate('branchId', 'name code')
+    .populate('currentBranchId', 'name code')
+    .select('-password');
+    
   if (!staff) {
     throw new ApiError(404, 'Staff member not found');
   }

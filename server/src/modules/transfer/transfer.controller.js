@@ -559,6 +559,7 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   }
   staff.dutyStatus = 'OFF_DUTY';
   staff.activeDutySessionId = null;
+  staff.currentBranchId = transfer.toBranchId; // Courier Boy is now physically available at Destination Branch!
   await staff.save();
 
   // Socket broadcast for duty end
