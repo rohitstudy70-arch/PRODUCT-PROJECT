@@ -630,7 +630,8 @@ export const SecurityGatePage: React.FC = () => {
                 <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-3">Date & Time</th>
-                    <th className="py-2.5 px-3">Courier / Staff Name</th>
+                    <th className="py-2.5 px-3">Courier Staff Approved</th>
+                    <th className="py-2.5 px-3">Approved By Guard</th>
                     <th className="py-2.5 px-3">Approved Products</th>
                     <th className="py-2.5 px-3">Transfer Route</th>
                     <th className="py-2.5 px-3">Gate & Type</th>
@@ -640,6 +641,7 @@ export const SecurityGatePage: React.FC = () => {
                 <tbody className="divide-y divide-slate-800/60 font-medium">
                   {historyLogs.map((log: any) => {
                     const staffObj = log.staffQR?.staffId;
+                    const guardObj = log.securityGuardId;
                     const transferObj = log.transferId;
                     const productsList = log.productsScanned || [];
 
@@ -668,6 +670,22 @@ export const SecurityGatePage: React.FC = () => {
                             </div>
                           ) : (
                             <span className="text-slate-500 font-mono">N/A</span>
+                          )}
+                        </td>
+
+                        {/* Security Guard Name */}
+                        <td className="py-3 px-3">
+                          {guardObj ? (
+                            <div>
+                              <p className="font-bold text-indigo-300">
+                                {guardObj.firstName} {guardObj.lastName}
+                              </p>
+                              <p className="text-[10px] font-mono text-slate-400">
+                                ID: {guardObj.employeeId || 'N/A'}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-mono">System Guard</span>
                           )}
                         </td>
 
