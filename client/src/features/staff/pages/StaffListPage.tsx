@@ -319,16 +319,6 @@ export const StaffListPage: React.FC = () => {
     }
   };
 
-  const handleToggleDutyStatus = async (staffId: string) => {
-    try {
-      const response = await api.patch(`/staff/${staffId}/toggle-duty`);
-      toast.success(response.data?.message || 'Duty status updated');
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to toggle duty status');
-    }
-  };
-
   const columns: Column<Staff>[] = [
     { header: 'Emp ID', accessorKey: 'employeeId' },
     {
@@ -350,22 +340,12 @@ export const StaffListPage: React.FC = () => {
       header: 'Duty Status',
       accessorKey: 'dutyStatus',
       render: (item) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleToggleDutyStatus(item._id)}
-          className={`h-7 px-2.5 text-[10px] font-bold uppercase transition-all cursor-pointer ${
-            (item as any).dutyStatus === 'ON_DUTY'
-              ? 'border-emerald-500/50 text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/60 shadow-sm'
-              : 'border-slate-700 text-slate-400 bg-slate-900 hover:bg-slate-800'
-          }`}
-          title="Click to toggle Duty Status (ON_DUTY / OFF_DUTY)"
+        <Badge
+          variant={(item as any).dutyStatus === 'ON_DUTY' ? 'success' : 'secondary'}
+          className="uppercase text-[10px] font-bold"
         >
-          <span className={`h-2 w-2 rounded-full mr-1.5 ${
-            (item as any).dutyStatus === 'ON_DUTY' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
-          }`} />
-          <span>{(item as any).dutyStatus === 'ON_DUTY' ? 'ON DUTY 🟢' : 'OFF DUTY 🔴'}</span>
-        </Button>
+          {(item as any).dutyStatus === 'ON_DUTY' ? 'ON DUTY 🟢' : 'OFF DUTY 🔴'}
+        </Badge>
       )
     },
     {

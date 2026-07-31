@@ -97,10 +97,9 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
   });
 
   if (!session) {
-    // Automatically start DutySession and set dutyStatus = 'ON_DUTY' whenever staff telemetry pings
+    // Only accept telemetry and create session if staff was verified & set to ON_DUTY at Security Gate Exit
     const staff = await Staff.findById(req.user._id);
-    if (staff) {
-      staff.dutyStatus = 'ON_DUTY';
+    if (staff && staff.dutyStatus === 'ON_DUTY') {
       session = await DutySession.create({
         organizationId: req.user.organizationId,
         branchId: req.user.branchId || staff.branchId,
@@ -111,7 +110,7 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
       staff.activeDutySessionId = session._id;
       await staff.save();
     } else {
-      return res.status(200).json(new ApiResponse(200, 'Tracking inactive - Staff record not found', { trackingActive: false }));
+      return res.status(200).json(new ApiResponse(200, 'Tracking inactive - Staff not verified at Security Gate yet', { trackingActive: false }));
     }
   }
 

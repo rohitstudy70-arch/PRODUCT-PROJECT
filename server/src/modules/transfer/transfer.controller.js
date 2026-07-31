@@ -879,21 +879,6 @@ export const assignIMEITransfer = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Courier staff not found');
   }
 
-  // Auto-activate courier dutyStatus to ON_DUTY so courier staff shows as ACTIVE immediately on assignment
-  courier.dutyStatus = 'ON_DUTY';
-  let activeSession = await DutySession.findOne({ staffId: courier._id, status: 'ON_DUTY' });
-  if (!activeSession) {
-    activeSession = await DutySession.create({
-      organizationId: req.user.organizationId,
-      branchId: courier.branchId || currentBranchId || destinationBranchId,
-      staffId: courier._id,
-      status: 'ON_DUTY',
-      startTime: new Date()
-    });
-  }
-  courier.activeDutySessionId = activeSession._id;
-  await courier.save();
-
   // Generate unique Transfer ID: TRF-2026-000001
   const year = new Date().getFullYear();
   const transferId = await getNextSequence(`transfer_${year}`, `TRF-${year}-`, 6);
