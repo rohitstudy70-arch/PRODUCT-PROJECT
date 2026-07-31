@@ -394,15 +394,15 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                 </div>
 
                 {/* ASSIGNED COURIER BOY / DELIVERY STAFF CARD */}
-                {(product.currentHolderId || activeCourierStaff) ? (
+                {((product.status === 'in_transit' || product.status === 'assigned') && (product.currentHolderId || activeCourierStaff)) ? (
                   <div className="bg-indigo-950/40 border border-indigo-500/40 rounded-xl p-3.5 space-y-2">
                     <div className="flex items-center justify-between border-b border-indigo-500/30 pb-2">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center">
                         <UserCheck className="h-4 w-4 mr-1.5 text-indigo-400" />
-                        Assigned Courier Boy / Delivery Staff
+                        Active Transport Courier
                       </p>
                       <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px]">
-                        Active Carrier
+                        In Transit Carrier
                       </Badge>
                     </div>
 
@@ -440,8 +440,8 @@ export const ProductTransferPanel: React.FC<ProductTransferPanelProps> = ({
                   </div>
                 ) : (
                   <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 text-xs italic flex items-center space-x-2">
-                    <UserCheck className="h-4 w-4 text-slate-500 shrink-0" />
-                    <span>No specific courier boy assigned yet. Select courier boy below to initiate transfer.</span>
+                    <UserCheck className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>Product is safely stored at <b>{currentBranch?.name || 'Branch'}</b>. No active courier assigned.</span>
                   </div>
                 )}
               </div>
