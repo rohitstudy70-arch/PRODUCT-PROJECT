@@ -97,9 +97,10 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
   });
 
   if (!session) {
-    // If no session exists but user is ON_DUTY, create fallback session
+    // Automatically start DutySession and set dutyStatus = 'ON_DUTY' whenever staff telemetry pings
     const staff = await Staff.findById(req.user._id);
-    if (staff && staff.dutyStatus === 'ON_DUTY') {
+    if (staff) {
+      staff.dutyStatus = 'ON_DUTY';
       session = await DutySession.create({
         organizationId: req.user.organizationId,
         branchId: req.user.branchId || staff.branchId,
@@ -110,7 +111,7 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
       staff.activeDutySessionId = session._id;
       await staff.save();
     } else {
-      return res.status(200).json(new ApiResponse(200, 'Tracking inactive - Staff not on duty', { trackingActive: false }));
+      return res.status(200).json(new ApiResponse(200, 'Tracking inactive - Staff record not found', { trackingActive: false }));
     }
   }
 
