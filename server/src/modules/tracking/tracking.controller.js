@@ -155,18 +155,20 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
       organizationId: req.user.organizationId,
       userId: req.user._id,
       type: 'battery_low',
-      title: 'Low Battery Alert',
-      message: `Staff ${req.user.firstName} ${req.user.lastName}'s device battery is low (${batteryLevel}%).`,
-      link: '/tracking'
-    });
-  }
+    address: addressText
+  });
 
-  // Emit Socket.IO real-time location update event
+  // Update session total distance and last location timestamp
+  session.totalDistanceKm += distKm;
+  session.lastLocationTimestamp = new Date();
+  await session.save();
+
+  // Socket broadcast for live map updates
   const io = req.app.get('io');
   if (io) {
     io.emit('staff_location_update', {
-      dutySessionId: session._id,
       staffId: req.user._id,
+      dutySessionId: session._id,
       staffName: `${req.user.firstName} ${req.user.lastName}`,
       employeeId: req.user.employeeId,
       branchId: session.branchId,
@@ -193,9 +195,9 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
   }));
 });
 
-// GET /api/v1/tracking/active - Fetch all currently active duty staff with live positions
+// GET /api/v1/tracking/active - Fetch all currently active duty staff with live positions (Courier Boys ONLY)
 export const getActiveDutyStaff = asyncHandler(async (req, res) => {
-  const query = { dutyStatus: 'ON_DUTY' };
+  const query = { dutyStatus: 'ON_DUTY', role: 'staff' };
 
   // Branch Admins only see staff assigned to their own branch
   if (req.user.role === 'branch_admin' && req.user.branchId) {

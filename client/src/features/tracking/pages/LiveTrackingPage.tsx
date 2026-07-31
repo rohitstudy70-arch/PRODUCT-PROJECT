@@ -170,7 +170,7 @@ export const LiveTrackingPage: React.FC = () => {
             className="w-72 bg-slate-950 border-slate-800"
           />
           <Badge variant="success" className="px-3 py-1 text-xs">
-            {filteredStaff.length} Staff On Duty
+            {filteredStaff.length} Courier Staff On Duty
           </Badge>
         </div>
 
@@ -194,9 +194,9 @@ export const LiveTrackingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: Left Map, Right Staff List */}
+      {/* Main Grid: Interactive Map + Active Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Interactive OpenStreetMap */}
+        {/* Left Map Display */}
         <div className="lg:col-span-2 rounded-xl overflow-hidden border border-slate-800 h-[580px] relative z-0">
           <MapContainer
             center={mapCenter}
@@ -221,32 +221,22 @@ export const LiveTrackingPage: React.FC = () => {
                   position={[lat, lng]}
                   icon={getMarkerIcon(item)}
                   eventHandlers={{
-                    click: () => setSelectedStaff(item)
+                    click: () => {
+                      setSelectedStaff(item);
+                    }
                   }}
                 >
-                  <Popup className="custom-popup">
-                    <div className="p-1 space-y-2 min-w-[200px] text-slate-900">
-                      <div className="font-bold text-sm border-b pb-1 flex items-center justify-between">
-                        <span>{item.staff.firstName} {item.staff.lastName}</span>
-                        {item.latestLocation.isGpsEnabled === false && (
-                          <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded font-semibold">GPS Off</span>
-                        )}
-                      </div>
-                      <div className="text-xs space-y-1">
-                        <p><span className="font-bold">ID:</span> {item.staff.employeeId}</p>
-                        <p><span className="font-bold">Branch:</span> {item.staff.branchId?.name}</p>
-                        {item.latestLocation.isGpsEnabled === false || item.latestLocation.trackingType === 'IP_FALLBACK' ? (
-                          <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded p-1.5 my-1 text-[11px]">
-                            <p className="font-bold text-amber-800">⚠️ IP Tracking Active</p>
-                            <p><span className="font-semibold">ISP:</span> {item.latestLocation.isp || 'Telecom/Wi-Fi'}</p>
-                            <p><span className="font-semibold">Area:</span> {item.latestLocation.address || 'Telecom Gateway'}</p>
-                          </div>
-                        ) : (
-                          <>
-                            <p><span className="font-bold">Speed:</span> {item.latestLocation.speed || 0} km/h</p>
-                          </>
-                        )}
-                        <p><span className="font-bold">Battery:</span> {item.latestLocation.batteryLevel}%</p>
+                  <Popup className="custom-leaflet-popup">
+                    <div className="p-1 space-y-1 font-sans text-xs">
+                      <p className="font-bold text-slate-900 text-sm">{`${item.staff.firstName} ${item.staff.lastName}`}</p>
+                      <p className="text-[10px] text-indigo-600 font-bold uppercase">{item.staff.branchId?.name || 'Central Head Office'}</p>
+                      <p className="text-slate-600 text-[11px] font-mono">ID: {item.staff.employeeId}</p>
+
+                      <div className="pt-1.5 border-t border-slate-200 space-y-0.5 text-[11px] text-slate-700">
+                        <p><span className="font-bold">Speed:</span> {item.latestLocation.speed || 0} km/h</p>
+                        <p><span className="font-bold">Battery:</span> {item.latestLocation.batteryLevel || 'N/A'}%</p>
+                        <p><span className="font-bold">Tracking:</span> {item.latestLocation.trackingType || 'GPS'}</p>
+                        <p className="truncate max-w-[200px]"><span className="font-bold">Address:</span> {item.latestLocation.address || 'Patna Metro Region'}</p>
                         <p><span className="font-bold">Last Ping:</span> {new Date(item.latestLocation.timestamp).toLocaleTimeString()}</p>
                       </div>
                       {item.session && (
@@ -272,7 +262,7 @@ export const LiveTrackingPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center justify-between">
               <span className="flex items-center space-x-2">
                 <Navigation className="h-4 w-4 text-indigo-400" />
-                <span>On-Duty Staff Feed</span>
+                <span>On-Duty Courier Boys Feed</span>
               </span>
               <Badge variant="outline">{filteredStaff.length} Active</Badge>
             </CardTitle>
