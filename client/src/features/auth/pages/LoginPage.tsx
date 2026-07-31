@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
-import { Dialog } from '../../../components/ui/dialog';
-import { Badge } from '../../../components/ui/badge';
 import { ROUTES } from '../../../config/routes';
-import api, { CLOUD_SERVER_URL, getBaseURL } from '../../../config/api';
+import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Mail, Lock, LogIn, Settings, Zap, Check, Server, RefreshCw } from 'lucide-react';
+import { Mail, Lock, LogIn, Zap, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const LoginPage: React.FC = () => {
@@ -17,20 +15,9 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [isWakingServer, setIsWakingServer] = useState(false);
-  const [serverModalOpen, setServerModalOpen] = useState(false);
-  const [customUrl, setCustomUrl] = useState('');
-  const [currentUrl, setCurrentUrl] = useState('');
 
   const { setAuth, user: cachedUser, accessToken: cachedToken } = useAuthStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    setCurrentUrl(getBaseURL());
-    const saved = localStorage.getItem('custom_server_url');
-    if (saved) {
-      setCustomUrl(saved);
-    }
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,17 +52,14 @@ export const LoginPage: React.FC = () => {
       clearTimeout(slowNoticeTimer);
       console.error('Login error:', error);
 
-      // If server returned an HTTP status response (e.g. 400, 401, 403, 404, 500), the server IS ALREADY AWAKE!
       if (error.response) {
         const msg = error.response.data?.message || error.response.data?.error || `Login failed (${error.response.status}). Check email and password.`;
         toast.error(msg);
         return;
       }
 
-      // Check if network error occurred (no HTTP response received)
       const isNetworkErr = error.message === 'Network Error' || error.code === 'ERR_NETWORK' || !error.response;
 
-      // FAST FALLBACK: If user previously logged in on this device, grant instant access!
       if (isNetworkErr && cachedUser && cachedToken) {
         toast.info('⚡ Granting instant session access!');
         setTimeout(() => {
@@ -85,7 +69,6 @@ export const LoginPage: React.FC = () => {
       }
 
       if (isNetworkErr) {
-        // Quick verification: ping server health to check if server is already awake
         try {
           const healthRes = await api.get('/health', { timeout: 3000 });
           if (healthRes.status === 200) {
@@ -93,10 +76,10 @@ export const LoginPage: React.FC = () => {
             return;
           }
         } catch (pingErr) {
-          // Health ping failed -> Server is truly sleeping/waking up
+          // Health ping failed
         }
 
-        toast.error('Cloud server is waking up (~15s delay). You can switch to Local Server in ⚙️ Settings for instant speed.', { duration: 6000 });
+        toast.error('Cloud server is waking up (~15s delay). Connecting to Render Cloud...', { duration: 6000 });
       } else {
         const msg = error.message || 'Login failed. Please check credentials.';
         toast.error(msg);
@@ -107,58 +90,10 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleSaveServerConfig = (urlToSet: string) => {
-    const trimmed = urlToSet.trim();
-    if (!trimmed || trimmed === CLOUD_SERVER_URL) {
-      localStorage.removeItem('custom_server_url');
-      setCurrentUrl(CLOUD_SERVER_URL);
-      toast.success('Switched to Cloud Server (Render)');
-    } else {
-      let finalUrl = trimmed;
-      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-        finalUrl = 'http://' + finalUrl;
-      }
-      if (!finalUrl.endsWith('/api/v1')) {
-        finalUrl = finalUrl.replace(/\/+$/, '') + '/api/v1';
-      }
-      localStorage.setItem('custom_server_url', finalUrl);
-      setCurrentUrl(finalUrl);
-      toast.success(`Server URL updated to: ${finalUrl}`);
-    }
-    setServerModalOpen(false);
-  };
-
-  const isLocalServer = !currentUrl.includes('onrender.com');
-
   return (
     <>
       <Toaster position="top-right" theme="dark" closeButton />
       <Card className="scale-in border-0 bg-transparent shadow-none relative">
-        {/* Top Header Server Switcher Badge */}
-        <div className="flex items-center justify-between mb-4">
-          <Badge
-            variant="outline"
-            className={`text-[10px] px-2.5 py-1 font-mono flex items-center space-x-1 cursor-pointer transition-all ${
-              isLocalServer
-                ? 'border-emerald-500/40 text-emerald-300 bg-emerald-950/40 hover:bg-emerald-900/50 hover:glow-emerald'
-                : 'border-indigo-500/40 text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/50 hover:glow-indigo'
-            }`}
-            onClick={() => setServerModalOpen(true)}
-            title="Click to configure Local Server IP or Cloud Server"
-          >
-            <Server className="h-3 w-3 mr-1" />
-            <span>{isLocalServer ? '⚡ Local Wi-Fi (Instant)' : '🌐 Cloud (Render)'}</span>
-          </Badge>
-
-          <button
-            onClick={() => setServerModalOpen(true)}
-            className="text-slate-400 hover:text-slate-200 text-xs flex items-center space-x-1 p-1"
-          >
-            <Settings className="h-4 w-4" />
-            <span className="text-[11px] underline">Server Setup</span>
-          </button>
-        </div>
-
         <CardHeader className="p-0 pb-4 text-center flex flex-col items-center">
           <motion.div 
             animate={{ y: [-4, 4, -4] }}
@@ -247,82 +182,6 @@ export const LoginPage: React.FC = () => {
           </form>
         </CardContent>
       </Card>
-
-      {/* Server Settings Dialog */}
-      <Dialog isOpen={serverModalOpen} onClose={() => setServerModalOpen(false)} title="⚙️ Server Connection Settings">
-        <div className="space-y-4 p-1 text-xs">
-          <p className="text-slate-400 text-xs">
-            Choose your backend server connection mode. For <strong>instant login without 15s delay</strong>, connect your phone/laptop to local Wi-Fi and use your Local Server IP address.
-          </p>
-
-          <div className="space-y-2">
-            {/* Quick Option 1: Cloud Server */}
-            <button
-              onClick={() => handleSaveServerConfig(CLOUD_SERVER_URL)}
-              className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
-                !isLocalServer
-                  ? 'bg-indigo-950/80 border-indigo-500 text-indigo-200 font-bold'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-              }`}
-            >
-              <div>
-                <p className="text-xs font-bold text-slate-100 flex items-center">
-                  🌐 Cloud Server (Render Free Host)
-                </p>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">{CLOUD_SERVER_URL}</p>
-                <p className="text-[10px] text-amber-400/90 mt-1">⚠️ Sleeps after 15m inactivity (~15-20s cold start)</p>
-              </div>
-              {!isLocalServer && <Check className="h-5 w-5 text-indigo-400 shrink-0" />}
-            </button>
-
-            {/* Quick Option 2: Localhost / Local IP */}
-            <button
-              onClick={() => handleSaveServerConfig('http://192.168.1.5:5000/api/v1')}
-              className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
-                isLocalServer
-                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-200 font-bold'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-              }`}
-            >
-              <div>
-                <p className="text-xs font-bold text-slate-100 flex items-center">
-                  ⚡ Local Wi-Fi Network Server (Instant Speed)
-                </p>
-                <p className="text-[10px] text-slate-400 font-mono mt-0.5">http://192.168.x.x:5000/api/v1</p>
-                <p className="text-[10px] text-emerald-400 mt-1">🚀 10ms response time | 0 cold start delay</p>
-              </div>
-              {isLocalServer && <Check className="h-5 w-5 text-emerald-400 shrink-0" />}
-            </button>
-          </div>
-
-          {/* Custom Server URL Input */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="text-xs font-semibold text-slate-300">Custom Local Server IP / Domain</label>
-            <div className="flex gap-2">
-              <Input
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="e.g. 192.168.1.10:5000 or http://10.0.2.2:5000/api/v1"
-                className="font-mono text-xs bg-slate-950 border-slate-800"
-              />
-              <Button
-                type="button"
-                onClick={() => handleSaveServerConfig(customUrl)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-xs px-4"
-              >
-                Apply
-              </Button>
-            </div>
-            <p className="text-[10px] text-slate-500">
-              Note: For Android Emulator, use <code>http://10.0.2.2:5000/api/v1</code>. For physical Android APK, enter your PC's Wi-Fi IP address.
-            </p>
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <Button variant="outline" onClick={() => setServerModalOpen(false)}>Close</Button>
-          </div>
-        </div>
-      </Dialog>
     </>
   );
 };
