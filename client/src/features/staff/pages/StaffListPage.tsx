@@ -337,18 +337,6 @@ export const StaffListPage: React.FC = () => {
       )
     },
     {
-      header: 'Duty Status',
-      accessorKey: 'dutyStatus',
-      render: (item) => (
-        <Badge
-          variant={(item as any).dutyStatus === 'ON_DUTY' ? 'success' : 'secondary'}
-          className="uppercase text-[10px] font-bold"
-        >
-          {(item as any).dutyStatus === 'ON_DUTY' ? 'ON DUTY 🟢' : 'OFF DUTY 🔴'}
-        </Badge>
-      )
-    },
-    {
       header: 'Branch Assignment',
       accessorKey: 'branchId.name',
       render: (item) => item.branchId ? item.branchId.name : 'Central Head Office'
