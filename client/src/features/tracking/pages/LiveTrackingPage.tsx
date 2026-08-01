@@ -302,9 +302,17 @@ export const LiveTrackingPage: React.FC = () => {
                           <p className="text-[10px] text-slate-500 font-mono">{item.staff.employeeId} | {item.staff.branchId?.name}</p>
                         </div>
                       </div>
-                      <Badge variant={loc?.speed > 2 ? 'success' : 'warning'} className="text-[9px]">
-                        {loc?.speed > 2 ? `${loc.speed} km/h` : 'Idle'}
-                      </Badge>
+                      <div className="flex items-center space-x-1">
+                        {loc?.isGpsEnabled === false || loc?.trackingType === 'IP_FALLBACK' ? (
+                          <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold animate-pulse">
+                            ⚠️ GPS OFF (IP / Cell Network)
+                          </Badge>
+                        ) : (
+                          <Badge variant={loc?.speed > 2 ? 'success' : 'warning'} className="text-[9px]">
+                            {loc?.speed > 2 ? `${loc.speed} km/h` : 'Idle'}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {loc ? (
@@ -317,8 +325,11 @@ export const LiveTrackingPage: React.FC = () => {
                           <Route className="h-3 w-3 text-indigo-400" />
                           <span>Dist: {item.session?.totalDistanceKm ? item.session.totalDistanceKm.toFixed(2) : 0} km</span>
                         </div>
+                        <div className="flex items-center space-x-1 col-span-2 text-slate-300 font-medium">
+                          <Signal className="h-3 w-3 text-indigo-400" />
+                          <span>Mode: {loc.trackingType === 'IP_FALLBACK' ? '🌐 IP / Network Geolocation' : '🛰️ Hardware GPS Satellite'}</span>
+                        </div>
                         <div className="flex items-center space-x-1 col-span-2 text-slate-500">
-                          <Signal className="h-3 w-3 text-blue-400" />
                           <span>Updated: {new Date(loc.timestamp).toLocaleTimeString()}</span>
                         </div>
                       </div>
