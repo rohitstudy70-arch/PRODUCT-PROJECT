@@ -13,15 +13,26 @@ export const sendSMS = async (phone, otp, staffName = 'Staff') => {
   }
 
   try {
-    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=q&message=${encodeURIComponent(`Your Arshi ERP Gate Verification OTP for ${staffName} is ${otp}. Valid for 10 minutes.`)}&flash=0&numbers=${cleanPhone}`;
-    
+    // Fast2SMS Smart OTP API (route=otp) - Billed at ~₹0.20 (20 paise) per SMS instead of ₹5 Quick SMS minimum
+    const otpUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=otp&variables_values=${encodeURIComponent(otp)}&numbers=${cleanPhone}`;
+    const fallbackUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=q&message=${encodeURIComponent(`Arshi Gate OTP: ${otp}`)}&flash=0&numbers=${cleanPhone}`;
+
     let responseData;
     if (typeof fetch !== 'undefined') {
-      const res = await fetch(url);
+      const res = await fetch(otpUrl);
       responseData = await res.json();
+      if (!responseData.return && !responseData.status_code) {
+        // Fallback to short 1-credit Quick SMS if OTP route requires template setup
+        const resFallback = await fetch(fallbackUrl);
+        responseData = await resFallback.json();
+      }
     } else {
-      const res = await axios.get(url);
+      const res = await axios.get(otpUrl);
       responseData = res.data;
+      if (!responseData.return && !responseData.status_code) {
+        const resFallback = await axios.get(fallbackUrl);
+        responseData = resFallback.data;
+      }
     }
 
     if (responseData.return === true || responseData.status_code === 200) {
