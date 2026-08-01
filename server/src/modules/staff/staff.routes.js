@@ -26,9 +26,9 @@ router.post('/scan-rfid', authorize('super_admin', 'branch_admin'), scanStaffRfi
 router.get('/', authorize('super_admin', 'branch_admin'), getAllStaff);
 router.get('/:id', authorize('super_admin', 'branch_admin'), getStaffById);
 
-// Staff management operations - only super_admin can modify staff
-router.post('/', authorize('super_admin'), auditTrail('staff', 'create'), createStaff);
-router.put('/:id', authorize('super_admin'), auditTrail('staff', 'update'), updateStaff);
+// Staff management operations - super_admin and branch_admin can create/update staff
+router.post('/', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'create'), createStaff);
+router.put('/:id', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'update'), updateStaff);
 router.delete('/:id', authorize('super_admin'), auditTrail('staff', 'delete'), deleteStaff);
 
 router.patch('/:id/assign-branch', authorize('super_admin'), auditTrail('staff', 'assign_branch'), assignBranch);

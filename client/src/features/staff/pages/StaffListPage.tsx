@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode, Edit, Printer } from 'lucide-react';
+import { Plus, Trash, QrCode, Edit, Printer, CreditCard, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Staff {
@@ -25,6 +25,7 @@ interface Staff {
     code: string;
   };
   qrCode?: string;
+  rfidCard?: string;
   status: string;
 }
 
@@ -44,8 +45,10 @@ export const StaffListPage: React.FC = () => {
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [quickRfidModalOpen, setQuickRfidModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [quickRfidValue, setQuickRfidValue] = useState('');
 
   // Form
   const [firstName, setFirstName] = useState('');
@@ -206,6 +209,28 @@ export const StaffListPage: React.FC = () => {
     setQrModalOpen(true);
   };
 
+  const handleOpenQuickRfid = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setQuickRfidValue(staff.rfidCard || '');
+    setQuickRfidModalOpen(true);
+  };
+
+  const handleSaveQuickRfid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaff) return;
+
+    try {
+      await api.put(`/staff/${selectedStaff._id}`, {
+        rfidCard: quickRfidValue.trim() || null
+      });
+      toast.success(`RFID Card updated for ${selectedStaff.firstName} ${selectedStaff.lastName}`);
+      setQuickRfidModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update RFID Card');
+    }
+  };
+
   const handlePrintQR = () => {
     const printContent = document.getElementById('staff-qr-print-element');
     if (!printContent) return;
@@ -360,17 +385,46 @@ export const StaffListPage: React.FC = () => {
       )
     },
     {
+      header: 'RFID Smart Card',
+      accessorKey: 'rfidCard',
+      render: (item) => (
+        item.rfidCard ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenQuickRfid(item)}
+            className="h-7 text-xs border-indigo-500/40 text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/60 flex items-center space-x-1"
+          >
+            <CreditCard className="h-3.5 w-3.5 text-indigo-400" />
+            <span className="font-mono text-[11px]">{item.rfidCard}</span>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenQuickRfid(item)}
+            className="h-7 text-[11px] border-amber-500/30 text-amber-400 bg-amber-950/20 hover:bg-amber-900/40 flex items-center space-x-1"
+          >
+            <CreditCard className="h-3.5 w-3.5 text-amber-400" />
+            <span>+ Assign RFID</span>
+          </Button>
+        )
+      )
+    },
+    {
       header: 'Actions',
       accessorKey: 'actions',
       render: (item) => (
-        user?.role === 'super_admin' ? (
+        (user?.role === 'super_admin' || user?.role === 'branch_admin') ? (
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => handleEditStaff(item)} className="h-8 w-8 p-0 text-indigo-400 hover:text-indigo-300">
+            <Button variant="outline" size="sm" onClick={() => handleEditStaff(item)} className="h-8 w-8 p-0 text-indigo-400 hover:text-indigo-300" title="Edit Full Staff Profile">
               <Edit className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
-              <Trash className="h-4 w-4" />
-            </Button>
+            {user?.role === 'super_admin' && (
+              <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300" title="Delete Staff">
+                <Trash className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ) : <span className="text-xs text-slate-500">None</span>
       )
@@ -567,6 +621,59 @@ export const StaffListPage: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Dialog>
+
+      {/* Quick RFID Card Assignment Dialog */}
+      <Dialog
+        isOpen={quickRfidModalOpen}
+        onClose={() => setQuickRfidModalOpen(false)}
+        title="🪪 Assign RFID Smart Card"
+      >
+        {selectedStaff && (
+          <form onSubmit={handleSaveQuickRfid} className="space-y-4 pt-2">
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center border border-indigo-500/30">
+                {selectedStaff.firstName[0]}
+                {selectedStaff.lastName[0]}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-100">{selectedStaff.firstName} {selectedStaff.lastName}</h4>
+                <p className="text-xs text-slate-400 font-mono">Emp ID: {selectedStaff.employeeId} • {selectedStaff.role.replace('_', ' ').toUpperCase()}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span>RFID Card UID / Tag Number</span>
+                <span className="text-[10px] text-indigo-400 font-mono">Tap Card or Type ID</span>
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  autoFocus
+                  placeholder="Tap card on RFID reader or enter UID (e.g. 0007373474)"
+                  value={quickRfidValue}
+                  onChange={(e) => setQuickRfidValue(e.target.value)}
+                  className="pl-9 bg-slate-950 border-slate-800 focus-visible:ring-indigo-500 text-sm font-mono"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Simply place the RFID Smart Card on your connected reader to auto-fill the card ID.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+              <Button type="button" variant="outline" onClick={() => setQuickRfidModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white flex items-center space-x-1">
+                <Sparkles className="h-4 w-4" />
+                <span>Save RFID Card</span>
+              </Button>
+            </div>
+          </form>
+        )}
       </Dialog>
     </div>
   );
