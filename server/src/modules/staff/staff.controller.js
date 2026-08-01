@@ -21,7 +21,8 @@ export const createStaff = asyncHandler(async (req, res) => {
     aadharNumber,
     panNumber,
     designation,
-    addressDetails
+    addressDetails,
+    rfidCard
   } = req.body;
 
   if (!firstName || !lastName || !email || !password || !role) {
@@ -32,6 +33,15 @@ export const createStaff = asyncHandler(async (req, res) => {
   const existingStaff = await Staff.findOne({ email });
   if (existingStaff) {
     throw new ApiError(400, 'Staff member with this email already exists');
+  }
+
+  // Verify unique RFID Card if provided
+  const cleanRfid = rfidCard ? rfidCard.trim() : null;
+  if (cleanRfid) {
+    const existingRfid = await Staff.findOne({ rfidCard: cleanRfid });
+    if (existingRfid) {
+      throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existingRfid.firstName} ${existingRfid.lastName} (${existingRfid.employeeId})`);
+    }
   }
 
   // Validate branch assignment if provided
@@ -56,6 +66,7 @@ export const createStaff = asyncHandler(async (req, res) => {
     password,
     phone,
     role,
+    rfidCard: cleanRfid,
     fatherName: fatherName || '',
     alternatePhone: alternatePhone || '',
     aadharNumber: aadharNumber || '',
@@ -328,11 +339,15 @@ export const scanStaffRfid = asyncHandler(async (req, res) => {
   }
 
   const cleanCode = code.trim();
+  const firstToken = cleanCode.split(/\s+/)[0];
   
-  // Search by rfidCard, employeeId, or qrCode
+  // Search by rfidCard (exact, token, or regex), employeeId, or qrCode
   const staff = await Staff.findOne({
     $or: [
       { rfidCard: cleanCode },
+      { rfidCard: firstToken },
+      { rfidCard: { $regex: cleanCode, $options: 'i' } },
+      { rfidCard: { $regex: firstToken, $options: 'i' } },
       { employeeId: { $regex: `^${cleanCode}$`, $options: 'i' } },
       { qrCode: cleanCode }
     ],
