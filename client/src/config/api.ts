@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
-export const CLOUD_SERVER_URL = 'https://product-project-wmc4.onrender.com/api/v1';
+export const CLOUD_SERVER_URL = 'https://product-project-server.onrender.com/api/v1';
 
 export const getBaseURL = () => {
   return localStorage.getItem('custom_server_url') || (import.meta as any).env?.VITE_API_URL || CLOUD_SERVER_URL;

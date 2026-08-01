@@ -55,6 +55,14 @@ const startServer = async () => {
   
   server.listen(PORT, () => {
     logger.info(`Server is running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+
+    // Self Keep-Alive Ping every 10 minutes to prevent Render free container from sleeping
+    const RENDER_SERVER_URL = process.env.SERVER_URL || 'https://product-project-server.onrender.com';
+    setInterval(() => {
+      fetch(`${RENDER_SERVER_URL}/api/v1/health`)
+        .then(() => logger.info('💓 Keep-Alive Self Ping sent successfully'))
+        .catch((err) => logger.warn(`Keep-Alive Self Ping notice: ${err.message}`));
+    }, 10 * 60 * 1000);
   });
 };
 

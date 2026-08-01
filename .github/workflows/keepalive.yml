@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Ping Render Cloud Backend
         run: |
-          curl -s -X GET https://product-project-wmc4.onrender.com/api/v1/health
+          curl -s -X GET https://product-project-server.onrender.com/api/v1/health
           echo "Keep-alive ping sent to cloud backend."
