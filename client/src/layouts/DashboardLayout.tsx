@@ -11,6 +11,8 @@ import { Button } from '../components/ui/button';
 import { MapPin, Navigation, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { CourierPermissionModal } from '../components/shared/CourierPermissionModal';
+
 export const DashboardLayout: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
@@ -159,6 +161,7 @@ export const DashboardLayout: React.FC = () => {
           </Button>
         </div>
       </Dialog>
+      <CourierPermissionModal />
     </div>
   );
 };
