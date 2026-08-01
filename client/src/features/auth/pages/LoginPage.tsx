@@ -142,16 +142,11 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Server Waking Notice if > 3.5s */}
+            {/* Enterprise Server Connecting Indicator */}
             {isWakingServer && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-1 text-amber-300 text-xs animate-pulse">
-                <div className="flex items-center space-x-2">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span className="font-bold">Cloud Server Waking Up (~15s on free tier)...</span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Tip: Connect to Local Wi-Fi server for <strong>instant 10ms response</strong>!
-                </p>
+              <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex items-center space-x-2 text-indigo-300 text-xs animate-pulse">
+                <RefreshCw className="h-3.5 w-3.5 animate-spin text-indigo-400 shrink-0" />
+                <span className="font-semibold">Connecting to Secure Enterprise Server...</span>
               </div>
             )}
 
