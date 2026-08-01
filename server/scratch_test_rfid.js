@@ -4,40 +4,45 @@ import Staff from './src/modules/staff/staff.model.js';
 
 dotenv.config({ path: './.env' });
 
-async function testRfidSave() {
+async function fixRfid() {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB Connected successfully');
+    console.log('MongoDB Connected');
 
-    const staff = await Staff.findOne({ isDeleted: { $ne: true } });
-    if (!staff) {
-      console.log('No staff found');
-      return;
-    }
+    // Find and show all staff with rfidCard assigned
+    const staffWithRfid = await Staff.find({ rfidCard: { $ne: null }, isDeleted: { $ne: true } })
+      .select('firstName lastName employeeId role rfidCard');
+    
+    console.log('\n--- All Staff with RFID Cards ---');
+    staffWithRfid.forEach(s => {
+      console.log(`  ${s.firstName} ${s.lastName} | ${s.employeeId} | Role: ${s.role} | RFID: ${s.rfidCard}`);
+    });
 
-    console.log('Target Staff:', staff.firstName, staff.lastName, 'Old rfidCard:', staff.rfidCard);
-
-    // Save test RFID
-    const testCard = '0007373474';
-    staff.rfidCard = testCard;
-    await staff.save();
-
-    console.log('Saved in memory:', staff.rfidCard);
-
-    // Re-fetch from MongoDB database
-    const freshStaff = await Staff.findById(staff._id);
-    console.log('Re-fetched from MongoDB:', freshStaff.rfidCard);
-
-    if (freshStaff.rfidCard === testCard) {
-      console.log('✅ TEST PASSED: RFID Card is saved and persisted in MongoDB!');
+    // Remove RFID from Central Admin (it was mistakenly assigned by test script)
+    const admin = await Staff.findOne({ role: 'super_admin', rfidCard: '0007373474' });
+    if (admin) {
+      console.log(`\n⚠️ Found RFID 0007373474 on Central Admin (${admin.firstName} ${admin.lastName}). Removing...`);
+      admin.rfidCard = null;
+      await admin.save();
+      console.log('✅ Removed RFID from Central Admin.');
     } else {
-      console.log('❌ TEST FAILED!');
+      console.log('\n✅ Central Admin does not have RFID 0007373474.');
     }
+
+    // List all staff members (courier boys / delivery staff)
+    const allStaff = await Staff.find({ isDeleted: { $ne: true } })
+      .select('firstName lastName employeeId role rfidCard designation');
+    
+    console.log('\n--- All Staff Members ---');
+    allStaff.forEach(s => {
+      console.log(`  ${s.firstName} ${s.lastName} | ${s.employeeId} | Role: ${s.role} | Designation: ${s.designation} | RFID: ${s.rfidCard || 'NONE'}`);
+    });
+
   } catch (err) {
-    console.error('Error during test:', err);
+    console.error('Error:', err);
   } finally {
     await mongoose.disconnect();
   }
 }
 
-testRfidSave();
+fixRfid();
