@@ -220,10 +220,10 @@ export const StaffListPage: React.FC = () => {
     if (!selectedStaff) return;
 
     try {
-      await api.patch(`/staff/${selectedStaff._id}/assign-rfid`, {
+      await api.put(`/staff/${selectedStaff._id}`, {
         rfidCard: quickRfidValue.trim() || null
       });
-      toast.success(`RFID Card updated for ${selectedStaff.firstName} ${selectedStaff.lastName}`);
+      toast.success(`RFID Card assigned to ${selectedStaff.firstName} ${selectedStaff.lastName}`);
       setQuickRfidModalOpen(false);
       fetchData();
     } catch (err: any) {
