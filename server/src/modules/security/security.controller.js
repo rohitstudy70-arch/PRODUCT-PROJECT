@@ -62,31 +62,17 @@ export const sendGateOTP = asyncHandler(async (req, res) => {
   const phone = staff.phone || staff.alternatePhone;
   if (!phone) {
     throw new ApiError(400, 'No registered phone number found for this staff member. Please update staff profile.');
-  // 60-Second Cooldown Check: If OTP was requested less than 60s ago, reuse active OTP without calling SMS API again
-  const existingOtp = gateOtpStore.get(staff._id.toString());
-  if (existingOtp && (Date.now() - existingOtp.createdAt) < 60 * 1000) {
-    const remainingSecs = Math.ceil((60 * 1000 - (Date.now() - existingOtp.createdAt)) / 1000);
-    const maskedPhone = phone.length >= 10 ? `${phone.slice(0, 3)}****${phone.slice(-3)}` : phone;
-    return res.status(200).json(
-      new ApiResponse(200, `OTP already sent to (${maskedPhone}). Resend available in ${remainingSecs} seconds.`, {
-        phone,
-        otp: existingOtp.otp,
-        smsMode: 'cached',
-        cooldownSeconds: remainingSecs
-      })
-    );
   }
 
   // Generate 6-digit random OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 mins
 
-  // Store in cache with createdAt timestamp
+  // Store in cache
   gateOtpStore.set(staff._id.toString(), {
     otp,
     phone,
     expiresAt,
-    createdAt: Date.now(),
     transferId
   });
 

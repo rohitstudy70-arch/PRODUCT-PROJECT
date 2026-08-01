@@ -13,27 +13,15 @@ export const sendSMS = async (phone, otp, staffName = 'Staff') => {
   }
 
   try {
-    // Short 1-credit message (<70 chars) to prevent multi-part SMS charges on Fast2SMS
-    const shortMessage = `Arshi Gate OTP is ${otp}. Valid 10 min.`;
-    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=otp&variables_values=${encodeURIComponent(otp)}&numbers=${cleanPhone}`;
-    const fallbackUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=q&message=${encodeURIComponent(shortMessage)}&flash=0&numbers=${cleanPhone}`;
+    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey.trim())}&route=q&message=${encodeURIComponent(`Your Arshi ERP Gate Verification OTP for ${staffName} is ${otp}. Valid for 10 minutes.`)}&flash=0&numbers=${cleanPhone}`;
     
     let responseData;
     if (typeof fetch !== 'undefined') {
       const res = await fetch(url);
       responseData = await res.json();
-      if (!responseData.return && !responseData.status_code) {
-        // Fallback to short Quick SMS route if OTP route template not configured
-        const resFallback = await fetch(fallbackUrl);
-        responseData = await resFallback.json();
-      }
     } else {
       const res = await axios.get(url);
       responseData = res.data;
-      if (!responseData.return && !responseData.status_code) {
-        const resFallback = await axios.get(fallbackUrl);
-        responseData = resFallback.data;
-      }
     }
 
     if (responseData.return === true || responseData.status_code === 200) {
