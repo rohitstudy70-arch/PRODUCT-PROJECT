@@ -373,3 +373,27 @@ export const scanStaffRfid = asyncHandler(async (req, res) => {
     activeAssignedProducts
   }));
 });
+
+export const assignStaffRfid = asyncHandler(async (req, res) => {
+  const { rfidCard } = req.body;
+  const staff = await Staff.findById(req.params.id);
+  if (!staff) {
+    throw new ApiError(404, 'Staff member not found');
+  }
+
+  const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
+  if (cleanRfid) {
+    const existing = await Staff.findOne({ rfidCard: cleanRfid, _id: { $ne: staff._id } });
+    if (existing) {
+      throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
+    }
+  }
+
+  staff.rfidCard = cleanRfid;
+  await staff.save();
+
+  const response = staff.toObject();
+  delete response.password;
+
+  res.status(200).json(new ApiResponse(200, `RFID Card ${cleanRfid ? 'assigned' : 'removed'} successfully`, response));
+});

@@ -9,7 +9,8 @@ import {
   assignRole,
   generateStaffQR,
   toggleStaffDutyStatus,
-  scanStaffRfid
+  scanStaffRfid,
+  assignStaffRfid
 } from './staff.controller.js';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
@@ -31,6 +32,7 @@ router.post('/', authorize('super_admin', 'branch_admin'), auditTrail('staff', '
 router.put('/:id', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'update'), updateStaff);
 router.delete('/:id', authorize('super_admin'), auditTrail('staff', 'delete'), deleteStaff);
 
+router.patch('/:id/assign-rfid', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'assign_rfid'), assignStaffRfid);
 router.patch('/:id/assign-branch', authorize('super_admin'), auditTrail('staff', 'assign_branch'), assignBranch);
 router.patch('/:id/assign-role', authorize('super_admin'), auditTrail('staff', 'assign_role'), assignRole);
 router.patch('/:id/toggle-duty', authorize('super_admin', 'branch_admin'), auditTrail('staff', 'toggle_duty'), toggleStaffDutyStatus);
