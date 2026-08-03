@@ -232,7 +232,7 @@ export const StaffListPage: React.FC = () => {
   };
 
   const handlePrintQR = () => {
-    const printContent = document.getElementById('staff-qr-print-element');
+    const printContent = document.getElementById('staff-qr-print-element-hidden');
     if (!printContent || !selectedStaff) return;
 
     const uniqueName = new Date().getTime();
@@ -694,6 +694,14 @@ export const StaffListPage: React.FC = () => {
     printWindow.document.close();
   };
 
+  const handleDirectPrint = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setQrCodeData(staff.qrCode || null);
+    setTimeout(() => {
+      handlePrintQR();
+    }, 100);
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to remove this staff member?')) return;
 
@@ -729,18 +737,42 @@ export const StaffListPage: React.FC = () => {
       render: (item) => item.branchId ? item.branchId.name : 'Central Head Office'
     },
     {
-      header: 'QR Status',
+      header: 'Identity Pass (QR & Card)',
       accessorKey: 'qrCode',
       render: (item) => (
         item.qrCode ? (
-          <Button variant="ghost" size="sm" onClick={() => handleOpenQRView(item, item.qrCode!)} className="h-7 text-emerald-400 p-1">
-            <QrCode className="h-4 w-4 mr-1" />
-            <span className="text-xs">View</span>
-          </Button>
+          <div className="flex items-center space-x-1.5">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleOpenQRView(item, item.qrCode!)} 
+              className="h-7 text-xs border-emerald-500/30 text-emerald-400 bg-emerald-950/10 hover:bg-emerald-900/20 px-2 py-0.5 flex items-center space-x-1"
+              title="View Digital ID Pass"
+            >
+              <QrCode className="h-3.5 w-3.5" />
+              <span>View</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleDirectPrint(item)} 
+              className="h-7 text-xs border-indigo-500/30 text-indigo-400 bg-indigo-950/10 hover:bg-indigo-900/20 px-2 py-0.5 flex items-center space-x-1"
+              title="Print Physical Card Sticker"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span>Print</span>
+            </Button>
+          </div>
         ) : (
           user?.role === 'super_admin' ? (
-            <Button variant="outline" size="sm" onClick={() => handleGenerateQR(item._id)} className="h-7 text-xs border-indigo-500/30 text-indigo-400">
-              Generate
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleGenerateQR(item._id)} 
+              className="h-7 text-xs border-indigo-500/30 text-indigo-400 hover:bg-indigo-950/20 px-2 py-0.5"
+            >
+              + Generate Pass
             </Button>
           ) : <span className="text-xs text-slate-500">Unassigned</span>
         )
@@ -1037,6 +1069,17 @@ export const StaffListPage: React.FC = () => {
           </form>
         )}
       </Dialog>
+
+      {/* Hidden print element helper */}
+      <div id="staff-qr-print-element-hidden" className="hidden" style={{ display: 'none' }}>
+        {qrCodeData && (
+          <QRCodeSVG
+            value={qrCodeData}
+            size={220}
+            level="M"
+          />
+        )}
+      </div>
     </div>
   );
 };
