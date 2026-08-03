@@ -26,7 +26,8 @@ export const createStaff = asyncHandler(async (req, res) => {
     panNumber,
     designation,
     addressDetails,
-    rfidCard
+    rfidCard,
+    avatar
   } = req.body;
 
   if (!firstName || !lastName || !email || !password || !role) {
@@ -71,6 +72,7 @@ export const createStaff = asyncHandler(async (req, res) => {
     phone,
     role,
     rfidCard: cleanRfid,
+    avatar: avatar || null,
     fatherName: fatherName || '',
     alternatePhone: alternatePhone || '',
     aadharNumber: aadharNumber || '',
@@ -156,7 +158,8 @@ export const updateStaff = asyncHandler(async (req, res) => {
     addressDetails,
     role,
     branchId,
-    rfidCard
+    rfidCard,
+    avatar
   } = req.body;
 
   const staff = await Staff.findById(req.params.id);
@@ -180,6 +183,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (role) updateFields.role = role;
   if (branchId !== undefined) updateFields.branchId = branchId || null;
   if (addressDetails) updateFields.addressDetails = addressDetails;
+  if (avatar !== undefined) updateFields.avatar = avatar;
   
   if (rfidCard !== undefined) {
     const cleanRfid = normalizeRfid(rfidCard);

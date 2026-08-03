@@ -29,6 +29,7 @@ interface Staff {
   status: string;
   designation?: string;
   createdAt?: string;
+  avatar?: string;
 }
 
 interface Branch {
@@ -72,6 +73,7 @@ export const StaffListPage: React.FC = () => {
   const [district, setDistrict] = useState('');
   const [stateName, setStateName] = useState('Bihar');
   const [pincode, setPincode] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   const { user } = useAuthStore();
 
@@ -117,6 +119,7 @@ export const StaffListPage: React.FC = () => {
     setDistrict('');
     setStateName('Bihar');
     setPincode('');
+    setAvatar(null);
     setModalOpen(true);
   };
 
@@ -139,6 +142,7 @@ export const StaffListPage: React.FC = () => {
     setDistrict(staff.addressDetails?.district || '');
     setStateName(staff.addressDetails?.state || 'Bihar');
     setPincode(staff.addressDetails?.pincode || '');
+    setAvatar(staff.avatar || null);
     setModalOpen(true);
   };
 
@@ -159,6 +163,7 @@ export const StaffListPage: React.FC = () => {
         role,
         branchId: branchId || null,
         rfidCard: rfidCard || null,
+        avatar: avatar || null,
         fatherName,
         alternatePhone,
         aadharNumber,
@@ -261,6 +266,14 @@ export const StaffListPage: React.FC = () => {
       month: '2-digit',
       year: 'numeric'
     });
+
+    const avatarHtml = selectedStaff.avatar 
+      ? `<img src="${selectedStaff.avatar}" style="width: 100%; height: 100%; object-fit: cover;" />`
+      : `<div class="avatar-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>`;
 
     printWindow.document.write(`
       <html>
@@ -610,11 +623,7 @@ export const StaffListPage: React.FC = () => {
               </div>
               
               <div class="photo-container">
-                <div class="avatar-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                  </svg>
-                </div>
+                ${avatarHtml}
               </div>
               
               <div class="name-pill">${selectedStaff.firstName} ${selectedStaff.lastName}</div>
@@ -961,6 +970,58 @@ export const StaffListPage: React.FC = () => {
                   <option key={b._id} value={b._id}>{b.name}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400">Staff Profile Photo</label>
+            <div className="flex items-center space-x-3 p-3 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="h-14 w-12 border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden rounded">
+                {avatar ? (
+                  <img src={avatar} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[10px] text-slate-600">No Photo</span>
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      if (file.size > 800 * 1024) {
+                        toast.error("Image too large! Please choose an image smaller than 800 KB.");
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setAvatar(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                  id="avatar-upload-file-input"
+                />
+                <label 
+                  htmlFor="avatar-upload-file-input"
+                  className="inline-flex items-center px-3 py-1.5 border border-slate-700 rounded-md text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-800 cursor-pointer"
+                >
+                  Choose Photo
+                </label>
+                {avatar && (
+                  <Button 
+                    type="button"
+                    variant="ghost" 
+                    onClick={() => setAvatar(null)} 
+                    className="ml-2 text-xs text-red-400 hover:text-red-300 p-1 h-fit"
+                  >
+                    Remove
+                  </Button>
+                )}
+                <p className="text-[9px] text-slate-500 mt-1">Sticker photo for CR80 card. Recommended size: 240x290px (Max 800KB).</p>
+              </div>
             </div>
           </div>
 
