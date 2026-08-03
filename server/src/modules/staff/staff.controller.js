@@ -35,10 +35,10 @@ export const createStaff = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Staff member with this email already exists');
   }
 
-  // Verify unique RFID Card if provided
-  const cleanRfid = rfidCard ? rfidCard.trim() : null;
+  // Verify unique RFID Card if provided (case-insensitive check)
+  const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
   if (cleanRfid) {
-    const existingRfid = await Staff.findOne({ rfidCard: cleanRfid });
+    const existingRfid = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') } });
     if (existingRfid) {
       throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existingRfid.firstName} ${existingRfid.lastName} (${existingRfid.employeeId})`);
     }
@@ -180,7 +180,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (rfidCard !== undefined) {
     const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
     if (cleanRfid) {
-      const existing = await Staff.findOne({ rfidCard: cleanRfid, _id: { $ne: staff._id } });
+      const existing = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') }, _id: { $ne: staff._id } });
       if (existing) {
         throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
       }
@@ -209,7 +209,7 @@ export const deleteStaff = asyncHandler(async (req, res) => {
 
   // Soft delete using findByIdAndUpdate to bypass pre-save password validation
   await Staff.findByIdAndUpdate(req.params.id, {
-    $set: { isDeleted: true, deletedAt: new Date(), deletedBy: req.user._id }
+    $set: { isDeleted: true, deletedAt: new Date(), deletedBy: req.user._id, rfidCard: null }
   });
 
   res.status(200).json(new ApiResponse(200, 'Staff member soft-deleted successfully'));
@@ -398,7 +398,7 @@ export const assignStaffRfid = asyncHandler(async (req, res) => {
 
   const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
   if (cleanRfid) {
-    const existing = await Staff.findOne({ rfidCard: cleanRfid, _id: { $ne: staff._id } });
+    const existing = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') }, _id: { $ne: staff._id } });
     if (existing) {
       throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
     }
