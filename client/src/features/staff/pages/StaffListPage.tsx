@@ -233,97 +233,273 @@ export const StaffListPage: React.FC = () => {
 
   const handlePrintQR = () => {
     const printContent = document.getElementById('staff-qr-print-element');
-    if (!printContent) return;
+    if (!printContent || !selectedStaff) return;
 
     const uniqueName = new Date().getTime();
     const windowName = 'PrintWindow_' + uniqueName;
-    const printWindow = window.open('about:blank', windowName, 'left=50000,top=50000,width=0,height=0');
+    
+    // Open print window centered and visible for previewing
+    const printWindow = window.open('', windowName, 'width=600,height=500,top=100,left=100');
     if (!printWindow) return;
+
+    const getDesignation = (role: string) => {
+      switch(role) {
+        case 'staff': return 'Logistics Courier';
+        case 'security_guard': return 'Gate Security Officer';
+        case 'store_manager': return 'Inventory Manager';
+        case 'branch_admin': return 'Branch Administrator';
+        case 'super_admin': return 'HQ Administrator';
+        default: return 'Staff Member';
+      }
+    };
+
+    const designationName = selectedStaff.designation || getDesignation(selectedStaff.role);
+    const branchName = selectedStaff.branchId ? (selectedStaff.branchId as any).name : 'Central Head Office';
 
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Staff ID Card</title>
+          <title>Print Staff ID Card - ${selectedStaff.firstName}</title>
           <style>
+            @media print {
+              body {
+                background: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+              }
+              .print-btn {
+                display: none !important;
+              }
+              .card-container {
+                box-shadow: none !important;
+                border: 0.3px solid #312e81 !important;
+              }
+            }
             body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              background-color: #0f172a;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
+              min-height: 100vh;
+              margin: 0;
               padding: 20px;
-              color: #000;
-              background-color: #fff;
-              text-align: center;
             }
-            .card-container {
-              border: 2px solid #333;
-              border-radius: 12px;
-              padding: 24px;
-              width: 260px;
-              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-              display: inline-block;
-            }
-            .title {
-              font-size: 16px;
+            .print-btn {
+              background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+              color: white;
+              border: none;
+              padding: 10px 24px;
+              font-size: 14px;
               font-weight: bold;
-              margin-bottom: 2px;
-              color: #1e3a8a;
-              letter-spacing: 0.05em;
-            }
-            .subtitle {
-              font-size: 9px;
-              color: #666;
-              text-transform: uppercase;
-              letter-spacing: 0.1em;
-              margin-bottom: 16px;
-              font-weight: bold;
-            }
-            .qr-wrapper {
-              margin-bottom: 16px;
+              border-radius: 8px;
+              cursor: pointer;
+              margin-bottom: 25px;
+              box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+              transition: all 0.2s;
               display: flex;
-              justify-content: center;
+              align-items: center;
+              gap: 8px;
             }
-            .qr-wrapper svg {
-              width: 180px;
-              height: 180px;
+            .print-btn:hover {
+              transform: translateY(-1px);
+              box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+            }
+            
+            /* CR80 Standard dimensions: 85.6mm x 54mm */
+            .id-card {
+              width: 85.6mm;
+              height: 54mm;
+              background: linear-gradient(135deg, #090d16 0%, #111827 100%);
+              color: white;
+              border-radius: 3.18mm; /* standard CR80 rounded corners */
+              box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+              position: relative;
+              overflow: hidden;
+              box-sizing: border-box;
+              border: 1px solid #1f2937;
+              display: flex;
+              padding: 3.5mm;
+            }
+            
+            /* High fidelity graphic overlay */
+            .id-card::before {
+              content: '';
+              position: absolute;
+              top: -50%;
+              right: -10%;
+              width: 70mm;
+              height: 70mm;
+              background: radial-gradient(circle, rgba(79, 70, 229, 0.15) 0%, transparent 70%);
+              border-radius: 50%;
+              pointer-events: none;
+            }
+            .id-card::after {
+              content: '';
+              position: absolute;
+              bottom: -30%;
+              left: -10%;
+              width: 60mm;
+              height: 60mm;
+              background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+              pointer-events: none;
+              border-radius: 50%;
+            }
+            
+            .left-panel {
+              width: 55%;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              z-index: 10;
+              box-sizing: border-box;
+            }
+            .right-panel {
+              width: 45%;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              border-left: 0.5px solid rgba(255, 255, 255, 0.12);
+              padding-left: 3mm;
+              z-index: 10;
+              box-sizing: border-box;
+            }
+            
+            .header {
+              display: flex;
+              flex-direction: column;
+            }
+            .logo-text {
+              font-size: 10.5pt;
+              font-weight: 900;
+              letter-spacing: 0.8px;
+              color: #ffffff;
+              margin: 0;
+              text-transform: uppercase;
+            }
+            .dept-text {
+              font-size: 5pt;
+              font-weight: 800;
+              letter-spacing: 2px;
+              color: #10b981; /* emerald/green indicator */
+              text-transform: uppercase;
+              margin: 0.5mm 0 0 0;
+            }
+            
+            .staff-info {
+              margin-top: 1.5mm;
             }
             .name {
-              font-size: 16px;
-              font-weight: bold;
-              margin-top: 8px;
+              font-size: 10.5pt;
+              font-weight: 800;
+              color: #ffffff;
+              line-height: 1.2;
+              margin: 0;
             }
-            .role {
-              font-size: 11px;
-              color: #4f46e5;
+            .designation {
+              font-size: 6pt;
+              font-weight: 700;
+              color: #a5b4fc; /* light indigo */
               text-transform: uppercase;
-              font-weight: bold;
-              margin-top: 2px;
-              letter-spacing: 0.05em;
+              letter-spacing: 0.5px;
+              margin: 0.8mm 0 0 0;
             }
-            .emp-id {
-              font-size: 10px;
-              color: #888;
+            
+            .meta-info {
+              margin-top: 1.5mm;
+            }
+            .meta-row {
+              display: flex;
+              font-size: 5.5pt;
+              margin-bottom: 0.4mm;
+              align-items: center;
+            }
+            .meta-label {
+              color: #6b7280;
+              font-weight: 700;
+              width: 14mm;
+              text-transform: uppercase;
+            }
+            .meta-value {
+              color: #e5e7eb;
+              font-weight: 700;
               font-family: monospace;
-              margin-top: 4px;
+            }
+            
+            .qr-container {
+              background-color: white;
+              padding: 1.5mm;
+              border-radius: 1.5mm;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            }
+            .qr-container svg {
+              width: 25mm !important;
+              height: 25mm !important;
+              display: block;
+            }
+            
+            .card-footer {
+              font-size: 4pt;
+              color: #4b5563;
+              text-align: center;
+              margin-top: 2mm;
+              font-weight: 700;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
             }
           </style>
         </head>
         <body>
-          <div class="card-container">
-            <div class="title">ARSHI ENTERPRISE</div>
-            <div class="subtitle">Corporate Identity Card</div>
-            <div class="qr-wrapper">
-              ${printContent.innerHTML}
+          <button class="print-btn" onclick="window.print()">🖨️ Print ID Card Pass</button>
+          
+          <div class="id-card">
+            <div class="left-panel">
+              <div class="header">
+                <div class="logo-text">ARSHI ENTERPRISE</div>
+                <div class="dept-text">Logistics & Supply Pass</div>
+              </div>
+              
+              <div class="staff-info">
+                <div class="name">${selectedStaff.firstName} ${selectedStaff.lastName}</div>
+                <div class="designation">${designationName}</div>
+              </div>
+              
+              <div class="meta-info">
+                <div class="meta-row">
+                  <div class="meta-label">Staff ID:</div>
+                  <div class="meta-value">${selectedStaff.employeeId}</div>
+                </div>
+                <div class="meta-row">
+                  <div class="meta-label">RFID UID:</div>
+                  <div class="meta-value">${selectedStaff.rfidCard || 'NOT ASSIGNED'}</div>
+                </div>
+                <div class="meta-row">
+                  <div class="meta-label">Contact:</div>
+                  <div class="meta-value">${selectedStaff.phone || 'N/A'}</div>
+                </div>
+                <div class="meta-row">
+                  <div class="meta-label">Branch:</div>
+                  <div class="meta-value">${branchName}</div>
+                </div>
+              </div>
             </div>
-            <div class="name">${selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName}` : 'Staff Member'}</div>
-            <div class="role">${selectedStaff ? selectedStaff.role.replace('_', ' ').toUpperCase() : ''}</div>
-            <div class="emp-id">Emp ID: ${selectedStaff ? selectedStaff.employeeId : ''}</div>
+            
+            <div class="right-panel">
+              <div class="qr-container">
+                ${printContent.innerHTML}
+              </div>
+              <div class="card-footer">Scan to Verify</div>
+            </div>
           </div>
+          
           <script>
             window.onload = function() {
               window.print();
-              setTimeout(function() { window.close(); }, 500);
             }
           </script>
         </body>

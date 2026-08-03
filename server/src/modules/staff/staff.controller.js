@@ -7,6 +7,10 @@ import asyncHandler from '../../utils/asyncHandler.js';
 import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js';
 import crypto from 'crypto';
 
+const normalizeRfid = (rfid) => {
+  return rfid ? String(rfid).replace(/[^a-zA-Z0-9]/g, '').trim() : null;
+};
+
 export const createStaff = asyncHandler(async (req, res) => {
   const { 
     firstName, 
@@ -35,8 +39,8 @@ export const createStaff = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Staff member with this email already exists');
   }
 
-  // Verify unique RFID Card if provided (case-insensitive check)
-  const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
+  // Verify unique RFID Card if provided (case-insensitive check with normalization)
+  const cleanRfid = normalizeRfid(rfidCard);
   if (cleanRfid) {
     const existingRfid = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') } });
     if (existingRfid) {
@@ -178,7 +182,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (addressDetails) updateFields.addressDetails = addressDetails;
   
   if (rfidCard !== undefined) {
-    const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
+    const cleanRfid = normalizeRfid(rfidCard);
     if (cleanRfid) {
       const existing = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') }, _id: { $ne: staff._id } });
       if (existing) {
@@ -355,14 +359,19 @@ export const scanStaffRfid = asyncHandler(async (req, res) => {
 
   const cleanCode = code.trim();
   const firstToken = cleanCode.split(/\s+/)[0];
+  const normalizedRfid = cleanCode.replace(/[^a-zA-Z0-9]/g, '');
+  const firstTokenNormalized = firstToken.replace(/[^a-zA-Z0-9]/g, '');
   
   // Search by rfidCard (exact, token, or regex), employeeId, or qrCode
   const staff = await Staff.findOne({
     $or: [
       { rfidCard: cleanCode },
       { rfidCard: firstToken },
+      { rfidCard: normalizedRfid },
+      { rfidCard: firstTokenNormalized },
       { rfidCard: { $regex: cleanCode, $options: 'i' } },
       { rfidCard: { $regex: firstToken, $options: 'i' } },
+      { rfidCard: { $regex: normalizedRfid, $options: 'i' } },
       { employeeId: { $regex: `^${cleanCode}$`, $options: 'i' } },
       { qrCode: cleanCode }
     ],
@@ -396,7 +405,7 @@ export const assignStaffRfid = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Staff member not found');
   }
 
-  const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
+  const cleanRfid = normalizeRfid(rfidCard);
   if (cleanRfid) {
     const existing = await Staff.findOne({ rfidCard: { $regex: new RegExp(`^${cleanRfid}$`, 'i') }, _id: { $ne: staff._id } });
     if (existing) {

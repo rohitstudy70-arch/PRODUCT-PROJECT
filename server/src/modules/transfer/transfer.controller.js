@@ -304,13 +304,15 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Security exit scan rejected: Staff QR mismatch');
   }
 
-  // Validate RFID Card if not overridden
+  // Validate RFID Card if not overridden (with non-alphanumeric character stripping)
   let isRfidVerified = false;
   if (!overrideUsed) {
     if (!staff.rfidCard) {
       throw new ApiError(400, '❌ RFID CHECK BLOCKED: This courier staff member does not have an RFID card registered. Please assign an RFID Card in the Staff Directory first, or use Guard Override.');
     }
-    if (!rfidCard || String(rfidCard).trim() !== staff.rfidCard.trim()) {
+    const normalizedRequestRfid = rfidCard ? String(rfidCard).replace(/[^a-zA-Z0-9]/g, '') : '';
+    const normalizedStaffRfid = staff.rfidCard ? String(staff.rfidCard).replace(/[^a-zA-Z0-9]/g, '') : '';
+    if (normalizedRequestRfid !== normalizedStaffRfid) {
       throw new ApiError(400, `❌ RFID CHECK BLOCKED: Placed card (${rfidCard || 'None'}) does not match the registered RFID Card of Courier ${staff.firstName} ${staff.lastName}`);
     }
     isRfidVerified = true;
@@ -520,13 +522,15 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Security entry scan rejected: Staff QR mismatch');
   }
 
-  // Validate RFID Card if not overridden
+  // Validate RFID Card if not overridden (with non-alphanumeric character stripping)
   let isRfidVerified = false;
   if (!overrideUsed) {
     if (!staff.rfidCard) {
       throw new ApiError(400, '❌ RFID CHECK BLOCKED: This courier staff member does not have an RFID card registered. Please assign an RFID Card in the Staff Directory first, or use Guard Override.');
     }
-    if (!rfidCard || String(rfidCard).trim() !== staff.rfidCard.trim()) {
+    const normalizedRequestRfid = rfidCard ? String(rfidCard).replace(/[^a-zA-Z0-9]/g, '') : '';
+    const normalizedStaffRfid = staff.rfidCard ? String(staff.rfidCard).replace(/[^a-zA-Z0-9]/g, '') : '';
+    if (normalizedRequestRfid !== normalizedStaffRfid) {
       throw new ApiError(400, `❌ RFID CHECK BLOCKED: Placed card (${rfidCard || 'None'}) does not match the registered RFID Card of Courier ${staff.firstName} ${staff.lastName}`);
     }
     isRfidVerified = true;
