@@ -12,5 +12,6 @@ export const ROUTES = {
   RECEIVING: '/receiving',
   AUDIT: '/audit-logs',
   TRACKING: '/tracking',
-  TRACKING_REPORTS: '/tracking/reports'
+  TRACKING_REPORTS: '/tracking/reports',
+  STAFF_ACTIVITY: '/staff-activity'
 };

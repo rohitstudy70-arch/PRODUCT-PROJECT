@@ -17,7 +17,8 @@ import {
   FileSpreadsheet,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Activity
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
@@ -33,6 +34,7 @@ export const Sidebar: React.FC = () => {
     { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: ['super_admin', 'branch_admin', 'store_manager', 'security_guard', 'staff'] },
     { label: 'Branches', path: ROUTES.BRANCHES, icon: Building2, roles: ['super_admin'] },
     { label: 'Staff Members', path: ROUTES.STAFF, icon: Users, roles: ['super_admin'] },
+    { label: 'Staff Activity', path: ROUTES.STAFF_ACTIVITY, icon: Activity, roles: ['super_admin'] },
     { label: 'Products', path: ROUTES.PRODUCTS, icon: Package, roles: ['super_admin', 'branch_admin', 'store_manager'] },
     { label: 'Inventory Control', path: ROUTES.INVENTORY, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager'] },
     { label: 'Transfers', path: ROUTES.TRANSFERS, icon: ArrowRightLeft, roles: ['super_admin', 'branch_admin', 'store_manager', 'staff'] },

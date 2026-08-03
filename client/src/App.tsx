@@ -11,6 +11,7 @@ import LoginPage from './features/auth/pages/LoginPage';
 import DashboardPage from './features/dashboard/pages/DashboardPage';
 import BranchListPage from './features/branches/pages/BranchListPage';
 import StaffListPage from './features/staff/pages/StaffListPage';
+import StaffActivityPage from './features/staff/pages/StaffActivityPage';
 import ProductListPage from './features/products/pages/ProductListPage';
 import InventoryPage from './features/inventory/pages/InventoryPage';
 import TransferPage from './features/transfers/pages/TransferPage';
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
               <Route path={ROUTES.BRANCHES} element={<BranchListPage />} />
               <Route path={ROUTES.STAFF} element={<StaffListPage />} />
+              <Route path={ROUTES.STAFF_ACTIVITY} element={<StaffActivityPage />} />
               <Route path={ROUTES.AUDIT} element={<AuditLogPage />} />
               <Route path={ROUTES.TRACKING} element={<LiveTrackingPage />} />
               <Route path={ROUTES.TRACKING_REPORTS} element={<TrackingReportsPage />} />

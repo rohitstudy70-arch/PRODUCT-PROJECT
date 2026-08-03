@@ -27,6 +27,8 @@ interface Staff {
   qrCode?: string;
   rfidCard?: string;
   status: string;
+  designation?: string;
+  createdAt?: string;
 }
 
 interface Branch {

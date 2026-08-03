@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { ThemeToggle } from '../components/shared/ThemeToggle';
 import { ROUTES } from '../config/routes';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { Button } from '../components/ui/button';
 import { Dialog } from '../components/ui/dialog';
-import { Menu, QrCode, Scan, CreditCard } from 'lucide-react';
+import { Menu, QrCode, Scan, CreditCard, Bell } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { UniversalProductScannerModal } from '../components/shared/UniversalProductScannerModal';
 import { StaffRFIDTerminalModal } from '../components/shared/StaffRFIDTerminalModal';
+import { io } from 'socket.io-client';
+import api from '../config/api';
 
 export const Header: React.FC = () => {
   const location = useLocation();
@@ -18,6 +20,52 @@ export const Header: React.FC = () => {
   const [showIdCard, setShowIdCard] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showStaffRfidModal, setShowStaffRfidModal] = useState(false);
+
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (user?.role !== 'super_admin') return;
+
+    // Fetch initial logs
+    api.get('/security/scans', { params: { limit: 5 } })
+      .then(res => {
+        const initialLogs = (res.data.data || []).map((scan: any) => ({
+          id: scan._id,
+          title: scan.type === 'gate_entry' ? 'Warehouse Entry' : 'Warehouse Exit',
+          desc: `${scan.staffQR?.staffId?.firstName || 'Staff'} ${scan.staffQR?.staffId?.lastName || ''} passed Gate ${scan.gateNumber}`,
+          timestamp: scan.timestamp,
+          read: true
+        }));
+        setNotifications(initialLogs);
+      })
+      .catch(err => console.error('Failed to load initial notifications', err));
+
+    // Connect socket
+    const socketUrl = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:5000').replace('/api/v1', '');
+    const socket = io(socketUrl, { withCredentials: true });
+
+    socket.on('security_scan_logged', (newScan: any) => {
+      const isEntry = newScan.type === 'gate_entry';
+      const staffName = `${newScan.staffQR?.staffId?.firstName || 'Staff'} ${newScan.staffQR?.staffId?.lastName || ''}`;
+      
+      const newNotif = {
+        id: newScan._id,
+        title: isEntry ? 'Warehouse Entry 📥' : 'Warehouse Exit 📤',
+        desc: `${staffName} passed Gate ${newScan.gateNumber}`,
+        timestamp: newScan.timestamp,
+        read: false
+      };
+
+      setNotifications(prev => [newNotif, ...prev.slice(0, 4)]);
+      setUnreadCount(prev => prev + 1);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   const getBreadcrumbs = () => {
     const path = location.pathname;
@@ -81,6 +129,78 @@ export const Header: React.FC = () => {
             </div>
           </>
         )}
+        
+        {/* Super Admin Live Alerts Dropdown */}
+        {user?.role === 'super_admin' && (
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowNotifications(!showNotifications);
+                setUnreadCount(0); // clear count on open
+              }}
+              className="text-slate-400 hover:text-indigo-400 hover:bg-slate-800/60 rounded-lg relative cursor-pointer"
+              title="Activity Alerts"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white animate-bounce">
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
+
+            {showNotifications && (
+              <>
+                {/* Backdrop overlay to close dropdown */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowNotifications(false)}
+                />
+                
+                <div className="absolute right-0 mt-2.5 w-80 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-800 animate-in fade-in-50 duration-200">
+                  <div className="px-4 py-2.5 bg-slate-900/60 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200">Live Staff Swipes</span>
+                    <Link 
+                      to={ROUTES.STAFF_ACTIVITY}
+                      onClick={() => setShowNotifications(false)}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider"
+                    >
+                      View All
+                    </Link>
+                  </div>
+                  
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-900">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-500">
+                        No recent gate scans logged.
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div 
+                          key={notif.id}
+                          className={`p-3 text-xs hover:bg-slate-900 transition-colors flex flex-col space-y-0.5 ${
+                            !notif.read ? 'bg-indigo-950/10 border-l-2 border-l-indigo-500' : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-200">{notif.title}</span>
+                            <span className="text-[9px] text-slate-500">
+                              {new Date(notif.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </span>
+                          </div>
+                          <p className="text-slate-400 text-[11px]">{notif.desc}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <ThemeToggle />
       </div>
 

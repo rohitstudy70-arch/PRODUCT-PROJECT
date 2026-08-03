@@ -16,7 +16,6 @@ import {
   TrendingUp,
   Boxes,
   ShieldAlert,
-  CreditCard,
   ShieldCheck,
   Calendar
 } from 'lucide-react';
