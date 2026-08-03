@@ -48,6 +48,15 @@ const securityScanSchema = new mongoose.Schema(
       missing: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
       extra: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
     },
+    rfidCardScanned: String,
+    rfidVerified: {
+      type: Boolean,
+      default: false
+    },
+    overrideUsed: {
+      type: Boolean,
+      default: false
+    },
     notes: String,
     timestamp: {
       type: Date,

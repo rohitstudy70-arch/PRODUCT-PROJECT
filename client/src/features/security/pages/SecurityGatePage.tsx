@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Input } from '../../../components/ui/input';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
+import { Dialog } from '../../../components/ui/dialog';
 import {
   ShieldAlert,
   CheckCircle,
@@ -17,7 +18,9 @@ import {
   Send,
   Lock,
   Unlock,
-  KeyRound
+  KeyRound,
+  CreditCard,
+  Sparkles
 } from 'lucide-react';
 
 export const SecurityGatePage: React.FC = () => {
@@ -44,6 +47,47 @@ export const SecurityGatePage: React.FC = () => {
   const [enteredOtp, setEnteredOtp] = useState<string>('');
   const [sendingOtp, setSendingOtp] = useState<boolean>(false);
   const [verifyingOtp, setVerifyingOtp] = useState<boolean>(false);
+
+  // RFID Verification States
+  const [rfidModalOpen, setRfidModalOpen] = useState<boolean>(false);
+  const [rfidInput, setRfidInput] = useState<string>('');
+
+  // Global listener for RFID hardware scans when RFID modal is open
+  const rfidBufferRef = React.useRef<string>('');
+  const rfidLastKeyTimeRef = React.useRef<number>(0);
+
+  React.useEffect(() => {
+    if (!rfidModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.tagName === 'INPUT' && !target.classList.contains('rfid-capture-input')) {
+        return; // ignore if they are typing in another input
+      }
+
+      const currentTime = Date.now();
+      const timeDiff = currentTime - rfidLastKeyTimeRef.current;
+      rfidLastKeyTimeRef.current = currentTime;
+
+      if (e.key === 'Enter') {
+        if (rfidBufferRef.current.length >= 2) {
+          const scannedCode = rfidBufferRef.current.trim();
+          rfidBufferRef.current = '';
+          setRfidInput(scannedCode);
+          handleFinalizeWithRfid(scannedCode, false);
+        }
+      } else if (e.key.length === 1) {
+        if (timeDiff < 50 || rfidBufferRef.current.length > 0) {
+          rfidBufferRef.current += e.key;
+        } else {
+          rfidBufferRef.current = e.key;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [rfidModalOpen, staffData, scannedProductQrs, transferData, gateNumber, scanType]);
 
   const fetchSecurityHistory = async () => {
     try {
@@ -205,6 +249,26 @@ export const SecurityGatePage: React.FC = () => {
       return;
     }
 
+    // Open the RFID card tap modal instead of immediate submission
+    setRfidModalOpen(true);
+    setRfidInput('');
+  };
+
+  const handleFinalizeWithRfid = async (rfidCodeToVerify: string, bypass: boolean) => {
+    if (!transferData || !staffData) return;
+
+    // Verify it matches unless guard clicked bypass
+    if (!bypass) {
+      if (!staffData.rfidCard) {
+        toast.error('❌ Placed card cannot be verified because Courier has no registered RFID card. Setup card in Staff Directory or use Guard Override.');
+        return;
+      }
+      if (rfidCodeToVerify.trim() !== staffData.rfidCard.trim()) {
+        toast.error(`❌ Mismatched RFID Card! Read: "${rfidCodeToVerify}". Courier Registered Card: "${staffData.rfidCard}"`);
+        return;
+      }
+    }
+
     try {
       const endpoint = scanType === 'exit' ? '/transfers/gate-exit' : '/transfers/gate-entry';
       const payload = {
@@ -212,12 +276,17 @@ export const SecurityGatePage: React.FC = () => {
         staffQrCode: staffData.qrCode,
         scannedProductQrs,
         gateNumber,
-        notes: scanType === 'exit' ? 'Cleared security check at exit (OTP Verified)' : 'Cleared security check at entry (OTP Verified)'
+        rfidCard: bypass ? null : rfidCodeToVerify.trim(),
+        overrideUsed: bypass,
+        notes: scanType === 'exit'
+          ? `Cleared gate exit security check (OTP Verified${bypass ? ', RFID Guard Overridden' : ', RFID Card Verified'})`
+          : `Cleared gate entry check-in (OTP Verified${bypass ? ', RFID Guard Overridden' : ', RFID Card Verified'})`
       };
 
       const response = await api.post(endpoint, payload);
       toast.success(`✅ Gate Pass Approved! ${response.data.message}`);
 
+      setRfidModalOpen(false);
       fetchSecurityHistory();
       handleReset();
     } catch (err: any) {
@@ -739,6 +808,89 @@ export const SecurityGatePage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      
+      {/* Real-time RFID Verification Dialog */}
+      <Dialog
+        isOpen={rfidModalOpen}
+        onClose={() => setRfidModalOpen(false)}
+        title="🪪 Outbound Gate PASS - Tap Staff RFID Card"
+      >
+        {staffData && (
+          <div className="space-y-4 pt-2">
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center border border-indigo-500/30">
+                {staffData.firstName[0]}
+                {staffData.lastName ? staffData.lastName[0] : ''}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-100">{staffData.firstName} {staffData.lastName}</h4>
+                <p className="text-xs text-slate-400 font-mono">Emp ID: {staffData.employeeId} • {staffData.role.replace('_', ' ').toUpperCase()}</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-indigo-950/20 border border-indigo-500/30 rounded-xl text-center space-y-3">
+              <div className="mx-auto w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 animate-pulse">
+                <CreditCard className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-slate-200">Waiting for RFID Card Scan...</h4>
+                <p className="text-xs text-slate-450">
+                  {staffData.rfidCard 
+                    ? `Please ask Courier Boy to place card on the reader (Registered UID: ${staffData.rfidCard})`
+                    : '⚠️ Courier Boy does not have an RFID Card registered! Guard bypass or staff directory card setup is required.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">RFID Card UID (Direct Tap / Manual input)</label>
+              <Input
+                type="text"
+                autoFocus
+                placeholder="Tap card or type UID manually..."
+                value={rfidInput}
+                onChange={(e) => setRfidInput(e.target.value)}
+                className="bg-slate-950 border-slate-800 focus-visible:ring-indigo-500 text-sm font-mono text-center h-10 rfid-capture-input"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button 
+                onClick={() => handleFinalizeWithRfid(rfidInput, false)}
+                disabled={!rfidInput || !staffData.rfidCard}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span>Verify & Approve Gate Pass</span>
+              </Button>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setRfidModalOpen(false)} 
+                  className="flex-1 text-xs cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  onClick={() => {
+                    if (window.confirm('⚠️ EMERGENCY OVERRIDE: Are you sure you want to bypass RFID authentication? This action will be flagged in Super Admin dashboard.')) {
+                      handleFinalizeWithRfid('', true);
+                    }
+                  }} 
+                  className="flex-1 text-xs font-bold cursor-pointer"
+                >
+                  Guard Bypass
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
       <div id="recaptcha-container"></div>
     </div>
   );

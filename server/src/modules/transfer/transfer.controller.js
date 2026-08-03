@@ -250,7 +250,7 @@ export const scanItemForDispatch = asyncHandler(async (req, res) => {
 
 // --- SECURITY GATE EXIT WORKFLOW (CHECOUT SCAN) ---
 export const gateExitVerification = asyncHandler(async (req, res) => {
-  const { transferId, staffQrCode, scannedProductQrs, gateNumber, notes } = req.body;
+  const { transferId, staffQrCode, scannedProductQrs, gateNumber, notes, rfidCard, overrideUsed } = req.body;
 
   if (!transferId || !staffQrCode || !scannedProductQrs) {
     throw new ApiError(400, 'Transfer ID, Staff QR, and scanned Product QRs are required');
@@ -304,6 +304,18 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Security exit scan rejected: Staff QR mismatch');
   }
 
+  // Validate RFID Card if not overridden
+  let isRfidVerified = false;
+  if (!overrideUsed) {
+    if (!staff.rfidCard) {
+      throw new ApiError(400, '❌ RFID CHECK BLOCKED: This courier staff member does not have an RFID card registered. Please assign an RFID Card in the Staff Directory first, or use Guard Override.');
+    }
+    if (!rfidCard || String(rfidCard).trim() !== staff.rfidCard.trim()) {
+      throw new ApiError(400, `❌ RFID CHECK BLOCKED: Placed card (${rfidCard || 'None'}) does not match the registered RFID Card of Courier ${staff.firstName} ${staff.lastName}`);
+    }
+    isRfidVerified = true;
+  }
+
   // Step 2: Verify Product QR Codes
   const manifestItems = await TransferItem.find({ transferId: transfer._id });
   const manifestProductIds = manifestItems.map(item => item.productId.toString());
@@ -352,7 +364,7 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
       userId: transfer.requestedBy,
       type: 'mismatch_detected',
       title: 'Gate Scan Mismatch Alert',
-      message: `Security check rejected for Transfer ${transfer.transferId} due to item manifest mismatch.`,
+      message: `Security check rejected for Transfer ${transfer.transferId} due to item manifest mismatch.,`,
       link: `/transfers/${transfer._id}`
     });
 
@@ -364,7 +376,7 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
 
   // Everything matches! Approve dispatch.
   // Save Security Exit Approved Log
-  await SecurityScan.create({
+  const scanRecord = await SecurityScan.create({
     organizationId: transfer.organizationId,
     transferId: transfer._id,
     type: 'exit',
@@ -379,8 +391,30 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
       status: 'approved'
     })),
     result: 'approved',
+    rfidCardScanned: rfidCard ? String(rfidCard).trim() : null,
+    rfidVerified: isRfidVerified,
+    overrideUsed: !!overrideUsed,
     notes
   });
+
+  // Populate details for live dashboard feed
+  const populatedScan = await SecurityScan.findById(scanRecord._id)
+    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
+    .populate('securityGuardId', 'firstName lastName employeeId')
+    .populate({
+      path: 'transferId',
+      select: 'transferId fromBranchId toBranchId status items',
+      populate: [
+        { path: 'fromBranchId', select: 'name code' },
+        { path: 'toBranchId', select: 'name code' }
+      ]
+    });
+
+  // Socket broadcast for live feed
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('security_scan_logged', populatedScan);
+  }
 
   // Update Transfer status
   transfer.status = 'in_transit';
@@ -404,7 +438,6 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   await staff.save();
 
   // Socket broadcast for duty start
-  const io = req.app.get('io');
   if (io) {
     io.emit('duty_started', {
       staffId: staff._id,
@@ -445,7 +478,7 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
 
 // --- GATE ENTRY AND ARRIVAL RECEIVE WORKFLOW ---
 export const gateEntryReceive = asyncHandler(async (req, res) => {
-  const { transferId, staffQrCode, scannedProductQrs, gateNumber, notes } = req.body;
+  const { transferId, staffQrCode, scannedProductQrs, gateNumber, notes, rfidCard, overrideUsed } = req.body;
 
   if (!transferId || !staffQrCode || !scannedProductQrs) {
     throw new ApiError(400, 'Transfer ID, Staff QR, and scanned Product QRs are required');
@@ -485,6 +518,18 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
       notes: 'Entry rejected: Assigned staff QR invalid.'
     });
     throw new ApiError(400, 'Security entry scan rejected: Staff QR mismatch');
+  }
+
+  // Validate RFID Card if not overridden
+  let isRfidVerified = false;
+  if (!overrideUsed) {
+    if (!staff.rfidCard) {
+      throw new ApiError(400, '❌ RFID CHECK BLOCKED: This courier staff member does not have an RFID card registered. Please assign an RFID Card in the Staff Directory first, or use Guard Override.');
+    }
+    if (!rfidCard || String(rfidCard).trim() !== staff.rfidCard.trim()) {
+      throw new ApiError(400, `❌ RFID CHECK BLOCKED: Placed card (${rfidCard || 'None'}) does not match the registered RFID Card of Courier ${staff.firstName} ${staff.lastName}`);
+    }
+    isRfidVerified = true;
   }
 
   // Step 2: Verify Product QR Codes
@@ -532,7 +577,7 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   const isPerfectMatch = missingProductIds.length === 0;
 
   // Log entry scan
-  await SecurityScan.create({
+  const scanRecord = await SecurityScan.create({
     organizationId: transfer.organizationId,
     transferId: transfer._id,
     type: 'entry',
@@ -546,10 +591,32 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
       valid: true,
       status: 'approved'
     })),
-    result: isPerfectMatch ? 'approved' : 'approved', // Accept but register discrepancies
+    result: 'approved', // Accept but register discrepancies
     mismatches: { missing: missingProductIds },
+    rfidCardScanned: rfidCard ? String(rfidCard).trim() : null,
+    rfidVerified: isRfidVerified,
+    overrideUsed: !!overrideUsed,
     notes: isPerfectMatch ? 'Perfect verification entry' : 'Received with missing items'
   });
+
+  // Populate details for live dashboard feed
+  const populatedScan = await SecurityScan.findById(scanRecord._id)
+    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
+    .populate('securityGuardId', 'firstName lastName employeeId')
+    .populate({
+      path: 'transferId',
+      select: 'transferId fromBranchId toBranchId status items',
+      populate: [
+        { path: 'fromBranchId', select: 'name code' },
+        { path: 'toBranchId', select: 'name code' }
+      ]
+    });
+
+  // Socket broadcast for live feed
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('security_scan_logged', populatedScan);
+  }
 
   // Complete Transfer Update
   transfer.status = isPerfectMatch ? 'received' : 'arrived'; // arrived = partial receipt

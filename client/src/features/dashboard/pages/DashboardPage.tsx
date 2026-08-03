@@ -15,7 +15,10 @@ import {
   XOctagon,
   TrendingUp,
   Boxes,
-  ShieldAlert
+  ShieldAlert,
+  CreditCard,
+  ShieldCheck,
+  Calendar
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -24,6 +27,7 @@ import api from '../../../config/api';
 import { IMEISearchBar } from '../components/IMEISearchBar';
 import { ProductTransferPanel } from '../components/ProductTransferPanel';
 import { RecentTransfersWidget } from '../components/RecentTransfersWidget';
+import io from 'socket.io-client';
 
 interface Stats {
   totalProducts: number;
@@ -55,12 +59,14 @@ export const DashboardPage: React.FC = () => {
     try {
       setLoading(true);
       if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
-        const [statsRes, transfersRes] = await Promise.all([
+        const [statsRes, transfersRes, scansRes] = await Promise.all([
           api.get('/dashboard/stats'),
-          api.get('/transfers', { params: { limit: 10 } })
+          api.get('/transfers', { params: { limit: 10 } }),
+          api.get('/security/scans', { params: { limit: 20 } })
         ]);
         setStats(statsRes.data.data);
         setTransfers(transfersRes.data.data || []);
+        setHistoryLogs(scansRes.data.data || []);
       } else {
         // Guard or Staff member: load transfers list instead (avoids 403)
         const response = await api.get('/transfers', { params: { limit: 100 } });
@@ -80,6 +86,43 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Establish WebSocket Connection for Real-Time RFID scans log updates on Dashboard
+    const socketUrl = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:5000').replace('/api/v1', '');
+    const socket = io(socketUrl, {
+      withCredentials: true
+    });
+
+    socket.on('security_scan_logged', (newScan: any) => {
+      // Prepend to logs array and keep max 20 entries
+      setHistoryLogs(prevLogs => {
+        const exists = prevLogs.some(log => log._id === newScan._id);
+        if (exists) return prevLogs;
+        
+        // Push notification / audio beep alert for super admin on live scan
+        if (user?.role === 'super_admin') {
+          try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = context.createOscillator();
+            const gain = context.createGain();
+            osc.connect(gain);
+            gain.connect(context.destination);
+            osc.frequency.value = 880; // Premium chime beep
+            gain.gain.setValueAtTime(0.15, context.currentTime);
+            osc.start();
+            osc.stop(context.currentTime + 0.15);
+          } catch (e) {
+            console.log('Audio Context beep failed / blocked by gesture');
+          }
+        }
+        
+        return [newScan, ...prevLogs.slice(0, 19)];
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [user]);
 
   const handleSelectProduct = (product: any) => {
@@ -462,6 +505,120 @@ export const DashboardPage: React.FC = () => {
 
       {/* RECENT TRANSFERS WIDGET */}
       <RecentTransfersWidget transfers={transfers} />
+
+      {/* REAL-TIME WAREHOUSE ENTRY & EXIT FEED */}
+      {(user?.role === 'super_admin' || user?.role === 'branch_admin') && (
+        <Card className="glass-card border-indigo-500/20 bg-slate-950/70">
+          <CardHeader className="border-b border-slate-800 pb-3 flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-bold flex items-center space-x-2 text-foreground">
+              <ShieldAlert className="h-5 w-5 text-indigo-400 animate-pulse" />
+              <span>Warehouse RFID Entry & Exit Live Stream (वेयरहाउस रीयल-टाइम प्रवेश-निकास)</span>
+            </CardTitle>
+            <div className="flex items-center space-x-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] text-emerald-400 uppercase font-black tracking-wider">Live Monitoring</span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {historyLogs.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 italic text-sm">
+                No warehouse entries or exits logged yet.
+              </div>
+            ) : (
+              <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-850">
+                {historyLogs.map((log) => {
+                  const staffObj = log.staffQR?.staffId;
+                  const guardObj = log.securityGuardId;
+                  const transferObj = log.transferId;
+                  
+                  const isExit = log.type === 'exit';
+                  const isRfidVerified = log.rfidVerified;
+                  const isOverridden = log.overrideUsed;
+
+                  return (
+                    <div key={log._id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-900/40 transition-colors">
+                      <div className="flex items-start space-x-3.5">
+                        <div className={`p-2.5 rounded-xl border shrink-0 ${
+                          isExit 
+                            ? 'bg-amber-950/20 border-amber-500/30 text-amber-400' 
+                            : 'bg-blue-950/20 border-blue-500/30 text-blue-400'
+                        }`}>
+                          <Truck className="h-5 w-5" />
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                            <span className="text-sm font-black text-slate-200">
+                              {staffObj ? `${staffObj.firstName} ${staffObj.lastName}` : 'Courier Staff'}
+                            </span>
+                            <Badge variant="outline" className="text-[10px] font-mono border-slate-700 bg-slate-900/60 text-slate-400">
+                              ID: {staffObj?.employeeId || 'N/A'}
+                            </Badge>
+                            <Badge className={`text-[10px] uppercase font-extrabold ${
+                              isExit 
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            }`}>
+                              {isExit ? '📤 EXIT / OUTBOUND' : '📥 ENTRY / INBOUND'}
+                            </Badge>
+                          </div>
+
+                          <p className="text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-300">Gate:</span> {log.gateNumber || 'Gate 1'} • 
+                            <span className="font-semibold text-slate-300">Route:</span> 
+                            <span className="font-mono text-indigo-400 font-bold">{transferObj?.transferId || 'N/A'}</span>
+                            {transferObj?.fromBranchId && (
+                              <span className="text-slate-500 text-[11px]">
+                                ({transferObj.fromBranchId.name || 'HO'} ➔ {transferObj.toBranchId?.name || 'Branch'})
+                              </span>
+                            )}
+                          </p>
+
+                          <div className="flex items-center space-x-2 pt-1 flex-wrap gap-y-1">
+                            {isRfidVerified ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] flex items-center space-x-1 font-bold">
+                                <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                                <span>RFID Verified: {log.rfidCardScanned || 'Card'}</span>
+                              </Badge>
+                            ) : isOverridden ? (
+                              <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] flex items-center space-x-1 font-bold">
+                                <AlertTriangle className="h-3 w-3 text-red-400" />
+                                <span>Bypassed / Overridden by Guard</span>
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-slate-800 text-slate-400 text-[10px] border border-slate-700">
+                                Legacy / System Log
+                              </Badge>
+                            )}
+
+                            <span className="text-[11px] text-slate-500">
+                              Verified by: {guardObj ? `${guardObj.firstName} ${guardObj.lastName}` : 'System Guard'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Timestamp Info */}
+                      <div className="flex flex-col items-start md:items-end shrink-0 justify-center">
+                        <p className="text-xs font-bold text-slate-200 flex items-center">
+                          <Calendar className="h-3 w-3 mr-1 text-slate-400" />
+                          {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </p>
+                        <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                          {new Date(log.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Branch stock allocation */}
