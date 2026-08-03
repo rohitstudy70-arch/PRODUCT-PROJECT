@@ -160,35 +160,41 @@ export const updateStaff = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Staff member not found');
   }
 
-  if (firstName) staff.firstName = firstName;
-  if (lastName) staff.lastName = lastName;
-  if (phone) staff.phone = phone;
-  if (status) staff.status = status;
-  if (fatherName !== undefined) staff.fatherName = fatherName;
-  if (alternatePhone !== undefined) staff.alternatePhone = alternatePhone;
-  if (aadharNumber !== undefined) staff.aadharNumber = aadharNumber;
-  if (panNumber !== undefined) staff.panNumber = panNumber;
-  if (designation !== undefined) staff.designation = designation;
-  if (role) staff.role = role;
-  if (branchId !== undefined) staff.branchId = branchId || null;
-  if (addressDetails) staff.addressDetails = addressDetails;
+  // Build $set update object instead of using save() to avoid
+  // Mongoose pre-save hook & password validation issues (password has select:false + required:true)
+  const updateFields = {};
+
+  if (firstName) updateFields.firstName = firstName;
+  if (lastName) updateFields.lastName = lastName;
+  if (phone) updateFields.phone = phone;
+  if (status) updateFields.status = status;
+  if (fatherName !== undefined) updateFields.fatherName = fatherName;
+  if (alternatePhone !== undefined) updateFields.alternatePhone = alternatePhone;
+  if (aadharNumber !== undefined) updateFields.aadharNumber = aadharNumber;
+  if (panNumber !== undefined) updateFields.panNumber = panNumber;
+  if (designation !== undefined) updateFields.designation = designation;
+  if (role) updateFields.role = role;
+  if (branchId !== undefined) updateFields.branchId = branchId || null;
+  if (addressDetails) updateFields.addressDetails = addressDetails;
   
   if (rfidCard !== undefined) {
-    const cleanRfid = rfidCard ? rfidCard.trim() : null;
+    const cleanRfid = rfidCard ? String(rfidCard).trim() : null;
     if (cleanRfid) {
       const existing = await Staff.findOne({ rfidCard: cleanRfid, _id: { $ne: staff._id } });
       if (existing) {
         throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
       }
     }
-    staff.rfidCard = cleanRfid;
+    updateFields.rfidCard = cleanRfid;
   }
 
-  await staff.save();
+  const updatedStaff = await Staff.findByIdAndUpdate(
+    req.params.id,
+    { $set: updateFields },
+    { new: true, runValidators: true }
+  ).select('-password');
 
-  const response = staff.toObject();
-  
-  res.status(200).json(new ApiResponse(200, 'Staff member updated successfully', response));
+  res.status(200).json(new ApiResponse(200, 'Staff member updated successfully', updatedStaff));
 });
 
 export const deleteStaff = asyncHandler(async (req, res) => {
@@ -201,11 +207,10 @@ export const deleteStaff = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'You cannot delete your own account');
   }
 
-  // Soft delete
-  staff.isDeleted = true;
-  staff.deletedAt = new Date();
-  staff.deletedBy = req.user._id;
-  await staff.save();
+  // Soft delete using findByIdAndUpdate to bypass pre-save password validation
+  await Staff.findByIdAndUpdate(req.params.id, {
+    $set: { isDeleted: true, deletedAt: new Date(), deletedBy: req.user._id }
+  });
 
   res.status(200).json(new ApiResponse(200, 'Staff member soft-deleted successfully'));
 });
@@ -223,13 +228,14 @@ export const assignBranch = asyncHandler(async (req, res) => {
     if (!branch) {
       throw new ApiError(404, 'Branch not found');
     }
-    staff.branchId = branchId;
-  } else {
-    staff.branchId = null; // Unassign branch (Head office assignment)
   }
 
-  await staff.save();
-  res.status(200).json(new ApiResponse(200, 'Branch assignment updated successfully', staff));
+  const updatedStaff = await Staff.findByIdAndUpdate(
+    req.params.id,
+    { $set: { branchId: branchId || null } },
+    { new: true, runValidators: true }
+  ).select('-password');
+  res.status(200).json(new ApiResponse(200, 'Branch assignment updated successfully', updatedStaff));
 });
 
 export const assignRole = asyncHandler(async (req, res) => {
@@ -244,10 +250,13 @@ export const assignRole = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Staff member not found');
   }
 
-  staff.role = role;
-  await staff.save();
+  const updatedStaff = await Staff.findByIdAndUpdate(
+    req.params.id,
+    { $set: { role } },
+    { new: true, runValidators: true }
+  ).select('-password');
 
-  res.status(200).json(new ApiResponse(200, 'Role assignment updated successfully', staff));
+  res.status(200).json(new ApiResponse(200, 'Role assignment updated successfully', updatedStaff));
 });
 
 export const generateStaffQR = asyncHandler(async (req, res) => {
@@ -289,9 +298,8 @@ export const generateStaffQR = asyncHandler(async (req, res) => {
     generatedBy: req.user._id
   });
 
-  // Assign QR Code string to staff
-  staff.qrCode = qrCodeUUID;
-  await staff.save();
+  // Assign QR Code string to staff using findByIdAndUpdate
+  await Staff.findByIdAndUpdate(staff._id, { $set: { qrCode: qrCodeUUID } });
 
   res.status(200).json(new ApiResponse(200, 'Staff QR Code generated successfully', qrDoc));
 });
@@ -304,17 +312,24 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
 
   const DutySession = (await import('../tracking/dutySession.model.js')).default;
 
+  // Use findByIdAndUpdate to bypass pre-save password validation
+  const updatedStaff = await Staff.findByIdAndUpdate(
+    req.params.id,
+    { $set: { dutyStatus: staff.dutyStatus === 'ON_DUTY' ? 'OFF_DUTY' : 'ON_DUTY' } },
+    { new: true }
+  ).select('-password');
+
   if (staff.dutyStatus === 'ON_DUTY') {
-    staff.dutyStatus = 'OFF_DUTY';
+    // Was ON_DUTY, now going OFF_DUTY
     const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
     if (activeSession) {
       activeSession.status = 'COMPLETED';
       activeSession.endTime = new Date();
       await activeSession.save();
     }
-    staff.activeDutySessionId = null;
+    await Staff.findByIdAndUpdate(req.params.id, { $set: { activeDutySessionId: null } });
   } else {
-    staff.dutyStatus = 'ON_DUTY';
+    // Was OFF_DUTY, now going ON_DUTY
     let activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
     if (!activeSession) {
       activeSession = await DutySession.create({
@@ -325,11 +340,11 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
         startTime: new Date()
       });
     }
-    staff.activeDutySessionId = activeSession._id;
+    await Staff.findByIdAndUpdate(req.params.id, { $set: { activeDutySessionId: activeSession._id } });
   }
 
-  await staff.save();
-  res.status(200).json(new ApiResponse(200, `Duty status updated to ${staff.dutyStatus}`, staff));
+  const finalStaff = await Staff.findById(req.params.id).select('-password');
+  res.status(200).json(new ApiResponse(200, `Duty status updated to ${finalStaff.dutyStatus}`, finalStaff));
 });
 
 export const scanStaffRfid = asyncHandler(async (req, res) => {
@@ -389,11 +404,12 @@ export const assignStaffRfid = asyncHandler(async (req, res) => {
     }
   }
 
-  staff.rfidCard = cleanRfid;
-  await staff.save();
+  // Use findByIdAndUpdate instead of save() to bypass pre-save password validation
+  const updatedStaff = await Staff.findByIdAndUpdate(
+    req.params.id,
+    { $set: { rfidCard: cleanRfid } },
+    { new: true, runValidators: true }
+  ).select('-password');
 
-  const response = staff.toObject();
-  delete response.password;
-
-  res.status(200).json(new ApiResponse(200, `RFID Card ${cleanRfid ? 'assigned' : 'removed'} successfully`, response));
+  res.status(200).json(new ApiResponse(200, `RFID Card ${cleanRfid ? 'assigned' : 'removed'} successfully`, updatedStaff));
 });

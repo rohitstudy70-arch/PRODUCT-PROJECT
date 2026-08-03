@@ -155,11 +155,13 @@ export const postLocationTelemetry = asyncHandler(async (req, res) => {
       organizationId: req.user.organizationId,
       userId: req.user._id,
       type: 'battery_low',
-    address: addressText
-  });
+      title: 'Low Battery Alert',
+      message: `Staff ${req.user.firstName} ${req.user.lastName} battery is critically low (${batteryLevel}%). Location: ${addressText || 'Unknown'}`,
+      link: '/tracking'
+    });
+  }
 
-  // Update session total distance and last location timestamp
-  session.totalDistanceKm += distKm;
+  // Update session last location timestamp
   session.lastLocationTimestamp = new Date();
   await session.save();
 
