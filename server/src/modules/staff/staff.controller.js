@@ -323,6 +323,25 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
 
   const isGoingOffDuty = staff.dutyStatus === 'ON_DUTY';
 
+  // Find a security guard assigned to this staff's branch to set as the Security Officer
+  let branchGuard = null;
+  if (staff.branchId) {
+    branchGuard = await Staff.findOne({
+      branchId: staff.branchId,
+      role: 'security_guard',
+      status: 'active',
+      isDeleted: { $ne: true }
+    });
+  }
+  if (!branchGuard) {
+    // Fallback: Find any active security guard in the database
+    branchGuard = await Staff.findOne({
+      role: 'security_guard',
+      status: 'active',
+      isDeleted: { $ne: true }
+    });
+  }
+
   // Use findByIdAndUpdate to bypass pre-save password validation
   const updatedStaff = await Staff.findByIdAndUpdate(
     req.params.id,
@@ -330,42 +349,13 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     { new: true }
   ).select('-password');
 
-  // Find the active security guard for the staff's branch to assign as Security Officer
-  let securityGuardId = req.user?._id;
-  if (!securityGuardId || req.user?.role !== 'security_guard') {
-    if (staff.branchId) {
-      let branchGuard = await Staff.findOne({
-        branchId: staff.branchId,
-        role: 'security_guard',
-        status: 'active',
-        isDeleted: { $ne: true }
-      });
-      
-      // Fallback: If no security guard is registered for this specific branch, find any active security guard in the system
-      if (!branchGuard) {
-        branchGuard = await Staff.findOne({
-          role: 'security_guard',
-          status: 'active',
-          isDeleted: { $ne: true }
-        });
-      }
-
-      if (branchGuard) {
-        securityGuardId = branchGuard._id;
-      }
-    }
-  }
-  if (!securityGuardId) {
-    securityGuardId = staff._id;
-  }
-
   // Log a direct Warehouse entry/exit Security Scan record
   const scanRecord = await SecurityScan.create({
     organizationId: staff.organizationId,
     type: isGoingOffDuty ? 'exit' : 'entry',
     branchId: staff.branchId || null,
     gateNumber: 'RFID-1',
-    securityGuardId,
+    securityGuardId: branchGuard ? branchGuard._id : (req.user?._id || staff._id),
     staffQR: { scanned: true, valid: true, staffId: staff._id },
     result: 'approved',
     rfidCardScanned: staff.rfidCard || null,
@@ -380,6 +370,7 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     .populate('branchId', 'name code city')
     .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard designation avatar')
     .populate('securityGuardId', 'firstName lastName employeeId');
+
   const io = req.app.get('io');
   if (io) {
     io.emit('security_scan_logged', populatedScan);
@@ -389,7 +380,7 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     // Was ON_DUTY, now going OFF_DUTY
     const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
     if (activeSession) {
-      activeSession.status = 'OFF_DUTY';
+      activeSession.status = 'COMPLETED';
       activeSession.endTime = new Date();
       await activeSession.save();
     }
