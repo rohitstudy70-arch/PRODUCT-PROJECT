@@ -526,7 +526,7 @@ export const DashboardPage: React.FC = () => {
           <CardHeader className="border-b border-slate-800 pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-bold flex items-center space-x-2 text-foreground">
               <ShieldAlert className="h-5 w-5 text-indigo-400 animate-pulse" />
-              <span>Warehouse RFID Entry & Exit Live Stream (वेयरहाउस रीयल-टाइम प्रवेश-निकास)</span>
+              <span>Warehouse RFID Entry & Exit Live Stream</span>
             </CardTitle>
             <div className="flex items-center space-x-1.5">
               <span className="relative flex h-2 w-2">
