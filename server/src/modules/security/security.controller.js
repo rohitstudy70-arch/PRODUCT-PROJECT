@@ -30,11 +30,11 @@ export const getSecurityScans = asyncHandler(async (req, res) => {
     .limit(parseInt(limit))
     .populate({
       path: 'transferId',
-      select: 'transferId fromBranchId toBranchId status items',
+      select: 'transferId fromBranchId toBranchId status',
+      options: { strictPopulate: false },
       populate: [
         { path: 'fromBranchId', select: 'name code city' },
-        { path: 'toBranchId', select: 'name code city' },
-        { path: 'items.productId', select: 'name productId serialNumber imei category' }
+        { path: 'toBranchId', select: 'name code city' }
       ]
     })
     .populate('staffQR.staffId', 'firstName lastName employeeId phone fatherName aadharNumber designation')

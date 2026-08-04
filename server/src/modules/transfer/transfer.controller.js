@@ -402,11 +402,12 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
   // Populate details for live dashboard feed
   const populatedScan = await SecurityScan.findById(scanRecord._id)
     .populate('branchId', 'name code city')
-    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
+    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard designation avatar')
     .populate('securityGuardId', 'firstName lastName employeeId')
     .populate({
       path: 'transferId',
-      select: 'transferId fromBranchId toBranchId status items',
+      select: 'transferId fromBranchId toBranchId status',
+      options: { strictPopulate: false },
       populate: [
         { path: 'fromBranchId', select: 'name code' },
         { path: 'toBranchId', select: 'name code' }
@@ -607,11 +608,12 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
   // Populate details for live dashboard feed
   const populatedScan = await SecurityScan.findById(scanRecord._id)
     .populate('branchId', 'name code city')
-    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
+    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard designation avatar')
     .populate('securityGuardId', 'firstName lastName employeeId')
     .populate({
       path: 'transferId',
-      select: 'transferId fromBranchId toBranchId status items',
+      select: 'transferId fromBranchId toBranchId status',
+      options: { strictPopulate: false },
       populate: [
         { path: 'fromBranchId', select: 'name code' },
         { path: 'toBranchId', select: 'name code' }
