@@ -187,7 +187,7 @@ export const StaffActivityPage: React.FC = () => {
                 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                 : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
             }`}>
-              {isEntry ? '📥 Warehouse Entry (Ghusna)' : '📤 Warehouse Exit (Nikalna)'}
+              {isEntry ? '📥 Warehouse Entry' : '📤 Warehouse Exit'}
             </span>
             <p className="text-[10px] text-slate-300 font-semibold">
               Warehouse: <span className="text-indigo-400">{item.branchId?.name || 'Central Head Office'}</span>
