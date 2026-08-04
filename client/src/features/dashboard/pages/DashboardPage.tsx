@@ -58,14 +58,29 @@ export const DashboardPage: React.FC = () => {
     try {
       setLoading(true);
       if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
-        const [statsRes, transfersRes, scansRes] = await Promise.all([
+        const [statsRes, transfersRes, scansRes] = await Promise.allSettled([
           api.get('/dashboard/stats'),
           api.get('/transfers', { params: { limit: 10 } }),
           api.get('/security/scans', { params: { limit: 20 } })
         ]);
-        setStats(statsRes.data.data);
-        setTransfers(transfersRes.data.data || []);
-        setHistoryLogs(scansRes.data.data || []);
+        
+        if (statsRes.status === 'fulfilled') {
+          setStats(statsRes.value.data.data);
+        } else {
+          console.error('Failed to fetch dashboard stats', statsRes.reason);
+        }
+
+        if (transfersRes.status === 'fulfilled') {
+          setTransfers(transfersRes.value.data.data || []);
+        } else {
+          console.error('Failed to fetch dashboard transfers', transfersRes.reason);
+        }
+
+        if (scansRes.status === 'fulfilled') {
+          setHistoryLogs(scansRes.value.data.data || []);
+        } else {
+          console.error('Failed to fetch dashboard scans', scansRes.reason);
+        }
       } else {
         // Guard or Staff member: load transfers list instead (avoids 403)
         const response = await api.get('/transfers', { params: { limit: 100 } });
