@@ -13,7 +13,8 @@ import {
   Package, 
   CheckCircle2, 
   ShieldCheck, 
-  Sparkles
+  Sparkles,
+  MapPin
 } from 'lucide-react';
 import api from '../../config/api';
 import { toast } from 'sonner';
@@ -310,6 +311,26 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
                   <div className="text-slate-200 font-semibold mt-1.5 text-sm truncate">
                     {staffData.branchId?.name || staffData.currentBranchId?.name || 'Head Office'}
                   </div>
+                </div>
+              </div>
+
+              {/* Address Details */}
+              <div className="p-3.5 rounded-xl bg-slate-950/40 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-200 mt-4 text-xs">
+                <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-indigo-400" />
+                  <span>Residential Address</span>
+                </div>
+                <div className="text-slate-200 font-semibold mt-1.5 text-xs flex flex-wrap gap-1 leading-relaxed">
+                  {staffData.addressDetails && (staffData.addressDetails.street || staffData.addressDetails.district || staffData.addressDetails.state || staffData.addressDetails.pincode) ? (
+                    <>
+                      {staffData.addressDetails.street && <span>{staffData.addressDetails.street},</span>}
+                      {staffData.addressDetails.district && <span>{staffData.addressDetails.district},</span>}
+                      {staffData.addressDetails.state && <span>{staffData.addressDetails.state}</span>}
+                      {staffData.addressDetails.pincode && <span className="text-indigo-400 font-mono">({staffData.addressDetails.pincode})</span>}
+                    </>
+                  ) : (
+                    <span className="text-slate-500">Address details not provided</span>
+                  )}
                 </div>
               </div>
             </div>
