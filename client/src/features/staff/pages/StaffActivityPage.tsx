@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
 
 interface SecurityScan {
   _id: string;
-  type: 'gate_exit' | 'gate_entry';
+  type: string;
   gateNumber: number;
   result: 'approved' | 'rejected';
   rfidCardScanned?: string;
@@ -19,6 +19,12 @@ interface SecurityScan {
   overrideUsed?: boolean;
   notes?: string;
   timestamp: string;
+  branchId?: {
+    _id: string;
+    name: string;
+    code: string;
+    city?: string;
+  };
   transferId?: {
     _id: string;
     transferId: string;
@@ -172,18 +178,24 @@ export const StaffActivityPage: React.FC = () => {
     {
       header: 'Gate / Activity',
       accessorKey: 'type',
-      render: (item) => (
-        <div>
-          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-            item.type === 'gate_entry' 
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-              : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-          }`}>
-            {item.type === 'gate_entry' ? '📥 Warehouse Entry (Ghusna)' : '📤 Warehouse Exit (Nikalna)'}
-          </span>
-          <p className="text-[10px] text-slate-400 mt-1 font-semibold">Gate Number: {item.gateNumber}</p>
-        </div>
-      )
+      render: (item) => {
+        const isEntry = item.type === 'entry' || item.type === 'gate_entry';
+        return (
+          <div className="space-y-1">
+            <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              isEntry 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+            }`}>
+              {isEntry ? '📥 Warehouse Entry (Ghusna)' : '📤 Warehouse Exit (Nikalna)'}
+            </span>
+            <p className="text-[10px] text-slate-300 font-semibold">
+              Warehouse: <span className="text-indigo-400">{item.branchId?.name || 'Central Head Office'}</span>
+            </p>
+            <p className="text-[9px] text-slate-500 font-medium">Gate Number: {item.gateNumber}</p>
+          </div>
+        );
+      }
     },
     {
       header: 'RFID Card Scanned',
@@ -307,8 +319,8 @@ export const StaffActivityPage: React.FC = () => {
             className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
           >
             <option value="all">All Activities (Entry & Exit)</option>
-            <option value="gate_entry">📥 Warehouse Entries Only</option>
-            <option value="gate_exit">📤 Warehouse Exits Only</option>
+            <option value="entry">📥 Warehouse Entries Only</option>
+            <option value="exit">📤 Warehouse Exits Only</option>
           </select>
         </div>
 

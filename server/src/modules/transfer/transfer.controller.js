@@ -401,6 +401,7 @@ export const gateExitVerification = asyncHandler(async (req, res) => {
 
   // Populate details for live dashboard feed
   const populatedScan = await SecurityScan.findById(scanRecord._id)
+    .populate('branchId', 'name code city')
     .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
     .populate('securityGuardId', 'firstName lastName employeeId')
     .populate({
@@ -605,6 +606,7 @@ export const gateEntryReceive = asyncHandler(async (req, res) => {
 
   // Populate details for live dashboard feed
   const populatedScan = await SecurityScan.findById(scanRecord._id)
+    .populate('branchId', 'name code city')
     .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard')
     .populate('securityGuardId', 'firstName lastName employeeId')
     .populate({

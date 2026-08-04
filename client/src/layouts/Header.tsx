@@ -31,13 +31,16 @@ export const Header: React.FC = () => {
     // Fetch initial logs
     api.get('/security/scans', { params: { limit: 5 } })
       .then(res => {
-        const initialLogs = (res.data.data || []).map((scan: any) => ({
-          id: scan._id,
-          title: scan.type === 'gate_entry' ? 'Warehouse Entry' : 'Warehouse Exit',
-          desc: `${scan.staffQR?.staffId?.firstName || 'Staff'} ${scan.staffQR?.staffId?.lastName || ''} passed Gate ${scan.gateNumber}`,
-          timestamp: scan.timestamp,
-          read: true
-        }));
+        const initialLogs = (res.data.data || []).map((scan: any) => {
+          const isEntry = scan.type === 'entry' || scan.type === 'gate_entry';
+          return {
+            id: scan._id,
+            title: isEntry ? 'Warehouse Entry 📥' : 'Warehouse Exit 📤',
+            desc: `${scan.staffQR?.staffId?.firstName || 'Staff'} ${scan.staffQR?.staffId?.lastName || ''} passed Gate ${scan.gateNumber}`,
+            timestamp: scan.timestamp,
+            read: true
+          };
+        });
         setNotifications(initialLogs);
       })
       .catch(err => console.error('Failed to load initial notifications', err));
@@ -47,7 +50,7 @@ export const Header: React.FC = () => {
     const socket = io(socketUrl, { withCredentials: true });
 
     socket.on('security_scan_logged', (newScan: any) => {
-      const isEntry = newScan.type === 'gate_entry';
+      const isEntry = newScan.type === 'entry' || newScan.type === 'gate_entry';
       const staffName = `${newScan.staffQR?.staffId?.firstName || 'Staff'} ${newScan.staffQR?.staffId?.lastName || ''}`;
       
       const newNotif = {

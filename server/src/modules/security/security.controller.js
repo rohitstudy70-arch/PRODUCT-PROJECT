@@ -39,7 +39,8 @@ export const getSecurityScans = asyncHandler(async (req, res) => {
     })
     .populate('staffQR.staffId', 'firstName lastName employeeId phone fatherName aadharNumber designation')
     .populate('securityGuardId', 'firstName lastName employeeId')
-    .populate('productsScanned.productId', 'name productId serialNumber imei category');
+    .populate('productsScanned.productId', 'name productId serialNumber imei category')
+    .populate('branchId', 'name code city');
 
   res.status(200).json(
     new ApiResponse(200, 'Security clearance logs fetched successfully', scans, generatePaginationMeta(page, limit, total))
