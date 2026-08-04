@@ -100,6 +100,28 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
       setStaffData(staff);
       setActiveProducts(activeAssignedProducts || []);
       toast.success(`Staff Found: ${staff.firstName} ${staff.lastName} (${staff.employeeId})`);
+
+      // ── Auto-toggle duty (Entry/Exit) immediately on scan ──
+      try {
+        setTogglingDuty(true);
+        const toggleRes = await api.patch(`/staff/${staff._id}/toggle-duty`);
+        const updatedStaff = toggleRes.data.data;
+
+        setStaffData((prev: any) => ({
+          ...prev,
+          dutyStatus: updatedStaff.dutyStatus
+        }));
+
+        if (updatedStaff.dutyStatus === 'ON_DUTY') {
+          toast.success(`🟢 Warehouse ENTRY logged — ${staff.firstName} ${staff.lastName} is now ON DUTY`);
+        } else {
+          toast.info(`🔴 Warehouse EXIT logged — ${staff.firstName} ${staff.lastName} checked out`);
+        }
+      } catch (toggleErr: any) {
+        toast.error(toggleErr.response?.data?.message || 'Failed to log warehouse entry/exit');
+      } finally {
+        setTogglingDuty(false);
+      }
     } catch (error: any) {
       const msg = error.response?.data?.message || 'No staff member found for this RFID card';
       toast.error(msg);
