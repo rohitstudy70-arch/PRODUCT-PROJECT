@@ -200,53 +200,74 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
         {/* Staff Identity Card View */}
         {staffData ? (
           <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/90 to-indigo-950/40 border border-indigo-500/30 shadow-xl relative overflow-hidden">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-indigo-950/20 border border-slate-800 shadow-2xl relative overflow-hidden">
               <div className="absolute -right-6 -top-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-xl shadow-inner overflow-hidden">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 border-b border-slate-800/80 pb-5">
+                {/* Large Profile Photo */}
+                <div className="relative">
+                  <div className={`w-24 h-24 rounded-2xl border-2 flex items-center justify-center text-slate-200 font-bold text-3xl shadow-2xl overflow-hidden transition-all duration-500 ${
+                    staffData.dutyStatus === 'ON_DUTY'
+                      ? 'border-emerald-500 bg-emerald-950/20 shadow-emerald-500/20'
+                      : 'border-rose-500 bg-rose-950/20 shadow-rose-500/20'
+                  }`}>
                     {staffData.avatar ? (
                       <img src={staffData.avatar} alt="Staff" className="w-full h-full object-cover" />
                     ) : (
-                      <>
+                      <div className="w-full h-full bg-slate-800 flex items-center justify-center text-indigo-400 uppercase">
                         {staffData.firstName?.[0]}
                         {staffData.lastName?.[0]}
-                      </>
+                      </div>
                     )}
                   </div>
+                  {/* Status Indicator Dot */}
+                  <span className={`absolute -bottom-1 -right-1 px-2 py-0.5 rounded-md text-[9px] font-extrabold uppercase tracking-wider border shadow-md ${
+                    staffData.dutyStatus === 'ON_DUTY'
+                      ? 'bg-emerald-500 text-emerald-950 border-emerald-400 animate-pulse'
+                      : 'bg-rose-500 text-rose-950 border-rose-400'
+                  }`}>
+                    {staffData.dutyStatus === 'ON_DUTY' ? 'Active' : 'Offline'}
+                  </span>
+                </div>
+
+                {/* Staff Meta Info */}
+                <div className="flex-1 text-center md:text-left space-y-2">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                    <h3 className="text-xl font-black text-slate-100 flex items-center justify-center md:justify-start space-x-2">
                       <span>{staffData.firstName} {staffData.lastName}</span>
-                      <ShieldCheck className="h-4 w-4 text-indigo-400" />
+                      <ShieldCheck className="h-5 w-5 text-indigo-400" />
                     </h3>
-                    <div className="text-xs text-slate-400 flex items-center space-x-2 mt-0.5">
-                      <span className="font-mono text-indigo-300">{staffData.employeeId}</span>
-                      <span>•</span>
-                      <span>{staffData.designation}</span>
-                    </div>
+                    <p className="text-xs text-slate-400 font-semibold mt-1 flex items-center justify-center md:justify-start space-x-2">
+                      <span className="font-mono text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-900/30">{staffData.employeeId}</span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-indigo-200">{staffData.designation || 'Staff Member'}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1">
+                    <Badge className={`px-2.5 py-0.5 text-[10px] font-bold tracking-wider ${
+                      staffData.dutyStatus === 'ON_DUTY'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}>
+                      {staffData.dutyStatus === 'ON_DUTY' ? '🟢 Live On Duty' : '🔴 Off Duty'}
+                    </Badge>
+                    {staffData.rfidCard && (
+                      <Badge variant="outline" className="border-indigo-500/20 text-indigo-300 bg-indigo-950/20 text-[10px] font-mono">
+                        🪪 {staffData.rfidCard}
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
                 {/* Duty Toggle Action */}
-                <div className="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-end">
-                  <Badge
-                    variant={staffData.dutyStatus === 'ON_DUTY' ? 'default' : 'secondary'}
-                    className={`px-3 py-1 text-xs font-semibold ${
-                      staffData.dutyStatus === 'ON_DUTY'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                    }`}
-                  >
-                    {staffData.dutyStatus === 'ON_DUTY' ? '⚡ LIVE ON DUTY' : '🔴 OFF DUTY'}
-                  </Badge>
-
+                <div className="flex items-center space-x-2 self-center">
                   <Button
                     size="sm"
                     onClick={handleToggleDuty}
                     loading={togglingDuty}
                     variant={staffData.dutyStatus === 'ON_DUTY' ? 'destructive' : 'default'}
-                    className="flex items-center space-x-1"
+                    className="flex items-center space-x-1 text-xs px-3 shadow-md"
                   >
                     {staffData.dutyStatus === 'ON_DUTY' ? (
                       <>
@@ -264,29 +285,29 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
               </div>
 
               {/* Detail Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-4 text-xs">
-                <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                  <div className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
-                    <Phone className="h-3 w-3 text-slate-400" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 text-xs">
+                <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-200">
+                  <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                    <Phone className="h-3.5 w-3.5 text-indigo-450" />
                     <span>Mobile Phone</span>
                   </div>
-                  <div className="text-slate-200 font-medium mt-1">{staffData.phone || 'N/A'}</div>
+                  <div className="text-slate-200 font-semibold mt-1.5 text-sm">{staffData.phone || 'N/A'}</div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                  <div className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
-                    <User className="h-3 w-3 text-slate-400" />
+                <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-200">
+                  <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                    <User className="h-3.5 w-3.5 text-indigo-450" />
                     <span>S/O Father Name</span>
                   </div>
-                  <div className="text-slate-200 font-medium mt-1 truncate">{staffData.fatherName || 'N/A'}</div>
+                  <div className="text-slate-200 font-semibold mt-1.5 text-sm truncate">{staffData.fatherName || 'N/A'}</div>
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 col-span-2 sm:col-span-1">
-                  <div className="text-slate-500 text-[10px] uppercase font-semibold flex items-center space-x-1">
-                    <Building2 className="h-3 w-3 text-slate-400" />
+                <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 hover:border-slate-700/80 transition-all duration-200">
+                  <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-indigo-450" />
                     <span>Branch Location</span>
                   </div>
-                  <div className="text-slate-200 font-medium mt-1 truncate">
+                  <div className="text-slate-200 font-semibold mt-1.5 text-sm truncate">
                     {staffData.branchId?.name || staffData.currentBranchId?.name || 'Head Office'}
                   </div>
                 </div>
