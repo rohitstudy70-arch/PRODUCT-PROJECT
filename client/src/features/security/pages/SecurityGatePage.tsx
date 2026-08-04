@@ -47,6 +47,7 @@ export const SecurityGatePage: React.FC = () => {
   const [enteredOtp, setEnteredOtp] = useState<string>('');
   const [sendingOtp, setSendingOtp] = useState<boolean>(false);
   const [verifyingOtp, setVerifyingOtp] = useState<boolean>(false);
+  const [generatedOtp, setGeneratedOtp] = useState<string>('');
 
   // RFID Verification States
   const [rfidModalOpen, setRfidModalOpen] = useState<boolean>(false);
@@ -120,6 +121,7 @@ export const SecurityGatePage: React.FC = () => {
       setOtpSent(false);
       setOtpVerified(false);
       setEnteredOtp('');
+      setGeneratedOtp('');
       
       // Auto pre-verify manifest items so Security Guard gets manifest loaded
       const allQrs = (transfer.items || []).map((i: any) => i.productId?.qrCode || i.productId?.serialNumber || i.productId?.productId || i.productId?._id);
@@ -146,13 +148,18 @@ export const SecurityGatePage: React.FC = () => {
         staffId: staffData._id,
         transferId: transferData?._id
       });
-      const { phone } = res.data.data;
+      const { phone, otp, smsMode } = res.data.data;
       setOtpSent(true);
+      setGeneratedOtp(otp);
 
       const cleanPhone = (phone || '').replace(/[^0-9]/g, '').slice(-10);
       const formattedPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : phone;
 
-      toast.success(`📲 REAL SMS OTP SENT via Fast2SMS to Staff Mobile SIM (${formattedPhone})! Ask Staff for 6-Digit OTP.`, { duration: 12000 });
+      if (smsMode !== 'real') {
+        toast.warning(`⚠️ SMS Gateway Notice: ${res.data.message || 'OTP not sent'}. (For testing/fallback, use OTP: ${otp})`, { duration: 15000 });
+      } else {
+        toast.success(`📲 REAL SMS OTP SENT via Fast2SMS to Staff Mobile SIM (${formattedPhone})! Ask Staff for 6-Digit OTP.`, { duration: 12000 });
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to send OTP to staff mobile number');
     } finally {
@@ -305,6 +312,7 @@ export const SecurityGatePage: React.FC = () => {
     setOtpSent(false);
     setOtpVerified(false);
     setEnteredOtp('');
+    setGeneratedOtp('');
   };
 
   return (
@@ -531,6 +539,11 @@ export const SecurityGatePage: React.FC = () => {
                         <span>Verify Staff OTP</span>
                       </Button>
                     </div>
+                    {generatedOtp && (
+                      <p className="text-xs text-amber-400/90 font-medium">
+                        🔑 For dev testing or gateway fallback, use active OTP: <span className="font-mono bg-amber-500/10 px-2 py-0.5 rounded text-amber-300 font-bold border border-amber-500/20">{generatedOtp}</span>
+                      </p>
+                    )}
                   </div>
                 )}
 
