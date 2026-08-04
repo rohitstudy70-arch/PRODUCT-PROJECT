@@ -319,15 +319,45 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
   }
 
   const DutySession = (await import('../tracking/dutySession.model.js')).default;
+  const SecurityScan = (await import('../security/securityScan.model.js')).default;
+
+  const isGoingOffDuty = staff.dutyStatus === 'ON_DUTY';
 
   // Use findByIdAndUpdate to bypass pre-save password validation
   const updatedStaff = await Staff.findByIdAndUpdate(
     req.params.id,
-    { $set: { dutyStatus: staff.dutyStatus === 'ON_DUTY' ? 'OFF_DUTY' : 'ON_DUTY' } },
+    { $set: { dutyStatus: isGoingOffDuty ? 'OFF_DUTY' : 'ON_DUTY' } },
     { new: true }
   ).select('-password');
 
-  if (staff.dutyStatus === 'ON_DUTY') {
+  // Log a direct Warehouse entry/exit Security Scan record
+  const scanRecord = await SecurityScan.create({
+    organizationId: staff.organizationId,
+    type: isGoingOffDuty ? 'exit' : 'entry',
+    branchId: staff.branchId || null,
+    gateNumber: 'RFID-1',
+    securityGuardId: req.user?._id || staff._id, // Set acting admin/guard or staff themselves
+    staffQR: { scanned: true, valid: true, staffId: staff._id },
+    result: 'approved',
+    rfidCardScanned: staff.rfidCard || null,
+    rfidVerified: true,
+    notes: isGoingOffDuty 
+      ? 'RFID Attendance Terminal - Warehouse Exit Check-out (Duty Completed)' 
+      : 'RFID Attendance Terminal - Warehouse Entry Check-in (Duty Started)'
+  });
+
+  // Populate SecurityScan details for WebSocket live feed broadcast
+  const populatedScan = await SecurityScan.findById(scanRecord._id)
+    .populate('branchId', 'name code city')
+    .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard designation avatar')
+    .populate('securityGuardId', 'firstName lastName employeeId');
+
+  const io = req.app.get('io');
+  if (io) {
+    io.emit('security_scan_logged', populatedScan);
+  }
+
+  if (isGoingOffDuty) {
     // Was ON_DUTY, now going OFF_DUTY
     const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
     if (activeSession) {

@@ -8,8 +8,7 @@ const securityScanSchema = new mongoose.Schema(
     },
     transferId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Transfer',
-      required: true
+      ref: 'Transfer'
     },
     type: {
       type: String,
