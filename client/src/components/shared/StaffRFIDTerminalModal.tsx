@@ -183,9 +183,15 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-xl shadow-inner">
-                    {staffData.firstName?.[0]}
-                    {staffData.lastName?.[0]}
+                  <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-xl shadow-inner overflow-hidden">
+                    {staffData.avatar ? (
+                      <img src={staffData.avatar} alt="Staff" className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        {staffData.firstName?.[0]}
+                        {staffData.lastName?.[0]}
+                      </>
+                    )}
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">

@@ -414,9 +414,13 @@ export const SecurityGatePage: React.FC = () => {
               {/* Staff Registered Profile Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 {/* Avatar */}
-                <div className="md:col-span-1 bg-slate-900 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center min-h-[90px]">
-                  <div className="h-12 w-12 rounded-lg bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-lg font-bold border border-indigo-500/40">
-                    {staffData.firstName[0]}{staffData.lastName ? staffData.lastName[0] : ''}
+                <div className="md:col-span-1 bg-slate-900 border border-indigo-500/20 rounded-xl p-3 flex flex-col items-center justify-center min-h-[90px] overflow-hidden">
+                  <div className="h-12 w-12 rounded-lg bg-indigo-600/30 text-indigo-300 flex items-center justify-center text-lg font-bold border border-indigo-500/40 overflow-hidden">
+                    {staffData.avatar ? (
+                      <img src={staffData.avatar} alt="Staff" className="w-full h-full object-cover" />
+                    ) : (
+                      <>{staffData.firstName[0]}{staffData.lastName ? staffData.lastName[0] : ''}</>
+                    )}
                   </div>
                 </div>
 
@@ -818,9 +822,15 @@ export const SecurityGatePage: React.FC = () => {
         {staffData && (
           <div className="space-y-4 pt-2">
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center border border-indigo-500/30">
-                {staffData.firstName[0]}
-                {staffData.lastName ? staffData.lastName[0] : ''}
+              <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-300 font-bold flex items-center justify-center border border-indigo-500/30 overflow-hidden">
+                {staffData.avatar ? (
+                  <img src={staffData.avatar} alt="Staff" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    {staffData.firstName[0]}
+                    {staffData.lastName ? staffData.lastName[0] : ''}
+                  </>
+                )}
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-100">{staffData.firstName} {staffData.lastName}</h4>
