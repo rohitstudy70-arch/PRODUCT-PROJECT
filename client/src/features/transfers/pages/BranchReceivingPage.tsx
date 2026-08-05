@@ -22,6 +22,16 @@ export const BranchReceivingPage: React.FC = () => {
 
   const { user } = useAuthStore();
 
+  const getAssignedBranchId = () => {
+    if (!user) return '';
+    const id = typeof user.branchId === 'object' ? user.branchId?._id : user.branchId;
+    return id ? id.toString() : '';
+  };
+
+  const activeBranchId = user?.role === 'super_admin'
+    ? (selectedBranchId || (branches.length > 0 ? branches[0]._id.toString() : ''))
+    : getAssignedBranchId();
+
   const fetchBranchesAndTransfers = async () => {
     try {
       const brRes = await api.get('/branches', { params: { limit: 100 } });
@@ -31,33 +41,21 @@ export const BranchReceivingPage: React.FC = () => {
     }
   };
 
-  const getEffectiveBranchId = () => {
-    if (selectedBranchId) return selectedBranchId;
-    if (user?.role !== 'super_admin') {
-      const assignedBranchId = typeof user?.branchId === 'object' ? (user?.branchId as any)?._id : user?.branchId;
-      if (assignedBranchId) return assignedBranchId.toString();
-    }
-    if (branches.length > 0) return branches[0]._id.toString();
-    return '';
-  };
-
-  const fetchTransfersForBranch = async (branchIdOverride?: string) => {
-    const targetBranchId = branchIdOverride || selectedBranchId || getEffectiveBranchId();
-    if (!targetBranchId) return;
-
+  const fetchTransfersForBranch = async (branchId: string) => {
+    if (!branchId) return;
     try {
       const response = await api.get('/transfers', { params: { limit: 100 } });
       const allTransfers = response.data.data;
       
       // Filter incoming in-transit
       const incoming = allTransfers.filter(
-        (t: any) => (t.toBranchId?._id === targetBranchId || t.toBranchId === targetBranchId) && t.status === 'in_transit'
+        (t: any) => (t.toBranchId?._id === branchId || t.toBranchId === branchId) && t.status === 'in_transit'
       );
       setIncomingTransfers(incoming);
 
       // Filter received history
       const history = allTransfers.filter(
-        (t: any) => (t.toBranchId?._id === targetBranchId || t.toBranchId === targetBranchId) && t.status === 'received'
+        (t: any) => (t.toBranchId?._id === branchId || t.toBranchId === branchId) && t.status === 'received'
       );
       setReceivedHistory(history);
     } catch (err) {
@@ -70,26 +68,13 @@ export const BranchReceivingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const assignedBranchId = typeof user?.branchId === 'object' ? (user?.branchId as any)?._id : user?.branchId;
-      if (user.role !== 'super_admin' && assignedBranchId) {
-        setSelectedBranchId(assignedBranchId.toString());
-      } else if (branches.length > 0 && !selectedBranchId) {
-        setSelectedBranchId(branches[0]._id.toString());
-      }
+    if (activeBranchId) {
+      fetchTransfersForBranch(activeBranchId);
     }
-  }, [user, branches]);
-
-  useEffect(() => {
-    const targetId = selectedBranchId || getEffectiveBranchId();
-    if (targetId) {
-      fetchTransfersForBranch(targetId);
-    }
-  }, [selectedBranchId, branches]);
+  }, [activeBranchId, branches]);
 
   const handleConfirmArrival = async (scannedCode: string) => {
-    const targetBranchId = selectedBranchId || getEffectiveBranchId();
-    if (!targetBranchId) {
+    if (!activeBranchId) {
       toast.error('Please select a receiving branch first');
       return;
     }
@@ -97,11 +82,11 @@ export const BranchReceivingPage: React.FC = () => {
     try {
       const response = await api.post('/transfers/confirm-arrival', {
         staffQrCode: scannedCode.trim(),
-        toBranchId: targetBranchId
+        toBranchId: activeBranchId
       });
       
       toast.success(response.data.message || 'Arrival confirmed & stock received successfully!');
-      fetchTransfersForBranch(targetBranchId);
+      fetchTransfersForBranch(activeBranchId);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to confirm arrival');
     }
@@ -127,19 +112,29 @@ export const BranchReceivingPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-semibold text-slate-400">Current Receiving Branch</label>
-                <select
-                  value={selectedBranchId || getEffectiveBranchId()}
-                  onChange={(e) => setSelectedBranchId(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 font-bold"
-                >
-                  <option value="">Select receiving branch...</option>
-                  {branches.map(b => (
-                    <option key={b._id} value={b._id}>{b.name.toUpperCase()} ({b.code})</option>
-                  ))}
-                </select>
-              </div>
+              {user?.role === 'super_admin' ? (
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Current Receiving Branch</label>
+                  <select
+                    value={activeBranchId}
+                    onChange={(e) => setSelectedBranchId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 font-bold"
+                  >
+                    <option value="">Select receiving branch...</option>
+                    {branches.map(b => (
+                      <option key={b._id} value={b._id}>{b.name.toUpperCase()} ({b.code})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-semibold text-slate-400">Assigned Branch (Locked)</label>
+                  <div className="flex h-10 w-full items-center rounded-md border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm font-bold text-indigo-300">
+                    <Building2 className="mr-2 h-4.5 w-4.5 text-indigo-400" />
+                    {user?.branchId?.name ? user.branchId.name.toUpperCase() : 'NO BRANCH ASSIGNED'}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
