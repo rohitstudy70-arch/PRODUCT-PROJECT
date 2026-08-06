@@ -159,7 +159,7 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
   };
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="🪪 Staff RFID Terminal & Attendance Check-in">
+    <Dialog isOpen={isOpen} onClose={onClose} title="🪪 Staff RFID Terminal ">
       <div className="space-y-5">
         {/* Hardware Status Banner */}
         <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs">
@@ -333,6 +333,59 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Driving Licence Document Verification */}
+              {(staffData.drivingLicense || staffData.drivingLicenseFront || staffData.drivingLicenseBack) && (
+                <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 mt-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="text-slate-400 text-[10px] uppercase font-bold tracking-wider flex items-center space-x-1.5">
+                      <span className="text-base">🚗</span>
+                      <span>Driving Licence Verification</span>
+                    </div>
+                    {staffData.drivingLicense && (
+                      <Badge variant="outline" className="border-cyan-500/30 text-cyan-300 bg-cyan-950/30 text-[10px] font-mono">
+                        DL: {staffData.drivingLicense}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* DL Front Photo */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Front Side</span>
+                      <div className="h-32 rounded-lg border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
+                        {staffData.drivingLicenseFront ? (
+                          <img
+                            src={staffData.drivingLicenseFront}
+                            alt="DL Front"
+                            className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                            onClick={() => window.open(staffData.drivingLicenseFront, '_blank')}
+                          />
+                        ) : (
+                          <span className="text-[10px] text-slate-600">Front photo not uploaded</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* DL Back Photo */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Back Side</span>
+                      <div className="h-32 rounded-lg border border-slate-700 bg-slate-950 flex items-center justify-center overflow-hidden">
+                        {staffData.drivingLicenseBack ? (
+                          <img
+                            src={staffData.drivingLicenseBack}
+                            alt="DL Back"
+                            className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                            onClick={() => window.open(staffData.drivingLicenseBack, '_blank')}
+                          />
+                        ) : (
+                          <span className="text-[10px] text-slate-600">Back photo not uploaded</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Active Assigned Packages Section */}
