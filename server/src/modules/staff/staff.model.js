@@ -50,6 +50,8 @@ const staffSchema = new mongoose.Schema(
     aadharNumber: String,
     panNumber: String,
     drivingLicense: String,
+    drivingLicenseFront: String,
+    drivingLicenseBack: String,
     addressDetails: {
       street: String,
       district: String,

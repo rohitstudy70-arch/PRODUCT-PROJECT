@@ -29,6 +29,8 @@ interface Staff {
   status: string;
   designation?: string;
   drivingLicense?: string;
+  drivingLicenseFront?: string;
+  drivingLicenseBack?: string;
   createdAt?: string;
   avatar?: string;
 }
@@ -70,6 +72,8 @@ export const StaffListPage: React.FC = () => {
   const [aadharNumber, setAadharNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
   const [drivingLicense, setDrivingLicense] = useState('');
+  const [dlFront, setDlFront] = useState<string | null>(null);
+  const [dlBack, setDlBack] = useState<string | null>(null);
   const [designation, setDesignation] = useState('Delivery Staff / Courier');
   const [street, setStreet] = useState('');
   const [district, setDistrict] = useState('');
@@ -117,6 +121,8 @@ export const StaffListPage: React.FC = () => {
     setAadharNumber('');
     setPanNumber('');
     setDrivingLicense('');
+    setDlFront(null);
+    setDlBack(null);
     setDesignation('Delivery Staff / Courier');
     setStreet('');
     setDistrict('');
@@ -141,6 +147,8 @@ export const StaffListPage: React.FC = () => {
     setAadharNumber(staff.aadharNumber || '');
     setPanNumber(staff.panNumber || '');
     setDrivingLicense(staff.drivingLicense || '');
+    setDlFront(staff.drivingLicenseFront || null);
+    setDlBack(staff.drivingLicenseBack || null);
     setDesignation(staff.designation || 'Delivery Staff / Courier');
     setStreet(staff.addressDetails?.street || '');
     setDistrict(staff.addressDetails?.district || '');
@@ -173,6 +181,8 @@ export const StaffListPage: React.FC = () => {
         aadharNumber,
         panNumber,
         drivingLicense,
+        drivingLicenseFront: dlFront,
+        drivingLicenseBack: dlBack,
         designation,
         addressDetails: {
           street,
@@ -928,6 +938,116 @@ export const StaffListPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Driving Licence Documents Upload (Front & Back) */}
+            <div className="p-3 bg-slate-900/90 rounded-xl border border-cyan-500/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-cyan-300 uppercase tracking-wider">
+                  🚗 Driving Licence Photo Verification (Front & Back Side)
+                </label>
+                <Badge variant="outline" className="text-[9px] border-cyan-500/40 text-cyan-400">Verification Document</Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* DL Front Upload */}
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-slate-300">DL Front Side Photo</span>
+                  <div className="flex items-center space-x-2.5 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <div className="h-14 w-20 border border-slate-700 bg-slate-900 flex items-center justify-center overflow-hidden rounded text-center shrink-0">
+                      {dlFront ? (
+                        <img src={dlFront} alt="DL Front" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] text-slate-500">No Front Photo</span>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 800 * 1024) {
+                              toast.error("Image too large! Please choose an image smaller than 800 KB.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => setDlFront(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="dl-front-upload-input"
+                      />
+                      <label
+                        htmlFor="dl-front-upload-input"
+                        className="inline-flex items-center px-2.5 py-1 border border-cyan-500/40 rounded text-[11px] font-bold text-cyan-300 hover:bg-cyan-950/40 cursor-pointer"
+                      >
+                        Upload Front
+                      </label>
+                      {dlFront && (
+                        <button
+                          type="button"
+                          onClick={() => setDlFront(null)}
+                          className="ml-2 text-[10px] text-red-400 hover:underline block"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* DL Back Upload */}
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-slate-300">DL Back Side Photo</span>
+                  <div className="flex items-center space-x-2.5 p-2 rounded-lg bg-slate-950 border border-slate-800">
+                    <div className="h-14 w-20 border border-slate-700 bg-slate-900 flex items-center justify-center overflow-hidden rounded text-center shrink-0">
+                      {dlBack ? (
+                        <img src={dlBack} alt="DL Back" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] text-slate-500">No Back Photo</span>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 800 * 1024) {
+                              toast.error("Image too large! Please choose an image smaller than 800 KB.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => setDlBack(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="dl-back-upload-input"
+                      />
+                      <label
+                        htmlFor="dl-back-upload-input"
+                        className="inline-flex items-center px-2.5 py-1 border border-cyan-500/40 rounded text-[11px] font-bold text-cyan-300 hover:bg-cyan-950/40 cursor-pointer"
+                      >
+                        Upload Back
+                      </label>
+                      {dlBack && (
+                        <button
+                          type="button"
+                          onClick={() => setDlBack(null)}
+                          className="ml-2 text-[10px] text-red-400 hover:underline block"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-400">Designation / Role Title</label>
               <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder="e.g. Delivery Staff / Courier" />
@@ -1034,9 +1154,29 @@ export const StaffListPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-400">RFID Card UID / Tag Number</label>
-            <Input value={rfidCard} onChange={(e) => setRfidCard(e.target.value)} placeholder="Tap RFID card on reader or type UID (e.g. 10293847)" />
+          <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-indigo-300 flex items-center space-x-1.5">
+                <CreditCard className="h-4 w-4 text-indigo-400 animate-pulse" />
+                <span>🪪 Tap RFID Card / Tag on Reader</span>
+              </label>
+              <Badge variant="outline" className="text-[9px] border-indigo-500/50 text-indigo-300 animate-pulse">
+                Ready to Scan Tag
+              </Badge>
+            </div>
+            <Input
+              value={rfidCard}
+              onChange={(e) => {
+                const val = e.target.value;
+                setRfidCard(val);
+                if (val.length >= 6) {
+                  toast.success(`RFID Tag Captured: ${val}`, { duration: 2000 });
+                }
+              }}
+              placeholder="Tap physical RFID card on reader or type UID (e.g. 10293847)"
+              className="font-mono text-xs border-indigo-500/50 bg-slate-950/80 focus:ring-indigo-500"
+            />
+            <p className="text-[9px] text-slate-400">Tapping an RFID card on the USB reader automatically fills and links the UID tag to this staff profile.</p>
           </div>
 
           <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
