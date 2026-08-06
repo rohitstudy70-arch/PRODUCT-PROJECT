@@ -49,6 +49,7 @@ const staffSchema = new mongoose.Schema(
     alternatePhone: String,
     aadharNumber: String,
     panNumber: String,
+    drivingLicense: String,
     addressDetails: {
       street: String,
       district: String,

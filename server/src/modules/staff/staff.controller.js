@@ -24,6 +24,7 @@ export const createStaff = asyncHandler(async (req, res) => {
     alternatePhone,
     aadharNumber,
     panNumber,
+    drivingLicense,
     designation,
     addressDetails,
     rfidCard,
@@ -77,6 +78,7 @@ export const createStaff = asyncHandler(async (req, res) => {
     alternatePhone: alternatePhone || '',
     aadharNumber: aadharNumber || '',
     panNumber: panNumber || '',
+    drivingLicense: drivingLicense || '',
     designation: designation || (role === 'staff' ? 'Delivery Staff / Courier' : role.replace('_', ' ').toUpperCase()),
     addressDetails: addressDetails || { street: '', district: '', state: '', pincode: '' }
   });
@@ -154,6 +156,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
     alternatePhone,
     aadharNumber,
     panNumber,
+    drivingLicense,
     designation,
     addressDetails,
     role,
@@ -179,6 +182,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (alternatePhone !== undefined) updateFields.alternatePhone = alternatePhone;
   if (aadharNumber !== undefined) updateFields.aadharNumber = aadharNumber;
   if (panNumber !== undefined) updateFields.panNumber = panNumber;
+  if (drivingLicense !== undefined) updateFields.drivingLicense = drivingLicense;
   if (designation !== undefined) updateFields.designation = designation;
   if (role) updateFields.role = role;
   if (branchId !== undefined) updateFields.branchId = branchId || null;

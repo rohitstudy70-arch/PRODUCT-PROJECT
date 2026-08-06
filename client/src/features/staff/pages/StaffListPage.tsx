@@ -28,6 +28,7 @@ interface Staff {
   rfidCard?: string;
   status: string;
   designation?: string;
+  drivingLicense?: string;
   createdAt?: string;
   avatar?: string;
 }
@@ -68,6 +69,7 @@ export const StaffListPage: React.FC = () => {
   const [alternatePhone, setAlternatePhone] = useState('');
   const [aadharNumber, setAadharNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
+  const [drivingLicense, setDrivingLicense] = useState('');
   const [designation, setDesignation] = useState('Delivery Staff / Courier');
   const [street, setStreet] = useState('');
   const [district, setDistrict] = useState('');
@@ -114,6 +116,7 @@ export const StaffListPage: React.FC = () => {
     setAlternatePhone('');
     setAadharNumber('');
     setPanNumber('');
+    setDrivingLicense('');
     setDesignation('Delivery Staff / Courier');
     setStreet('');
     setDistrict('');
@@ -137,6 +140,7 @@ export const StaffListPage: React.FC = () => {
     setAlternatePhone(staff.alternatePhone || '');
     setAadharNumber(staff.aadharNumber || '');
     setPanNumber(staff.panNumber || '');
+    setDrivingLicense(staff.drivingLicense || '');
     setDesignation(staff.designation || 'Delivery Staff / Courier');
     setStreet(staff.addressDetails?.street || '');
     setDistrict(staff.addressDetails?.district || '');
@@ -168,6 +172,7 @@ export const StaffListPage: React.FC = () => {
         alternatePhone,
         aadharNumber,
         panNumber,
+        drivingLicense,
         designation,
         addressDetails: {
           street,
@@ -908,14 +913,18 @@ export const StaffListPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-emerald-400">Aadhar Card Number</label>
                 <Input value={aadharNumber} onChange={(e) => setAadharNumber(e.target.value)} placeholder="e.g. 4536 7890 1238" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-400">PAN Card Number</label>
+                <label className="text-xs font-semibold text-indigo-400">PAN Card Number</label>
                 <Input value={panNumber} onChange={(e) => setPanNumber(e.target.value)} placeholder="e.g. ABCDE1004F" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-cyan-400">Driving Licence No. (DL)</label>
+                <Input value={drivingLicense} onChange={(e) => setDrivingLicense(e.target.value)} placeholder="e.g. BR-0120230045892" />
               </div>
             </div>
 
