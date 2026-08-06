@@ -102,24 +102,25 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
       setActiveProducts(activeAssignedProducts || []);
       toast.success(`Staff Found: ${staff.firstName} ${staff.lastName} (${staff.employeeId})`);
 
-      // ── Auto-toggle duty (Entry/Exit) immediately on scan ──
+      // ── Auto Duty ON (Entry) — Duty OFF only happens on product delivery at destination branch ──
       try {
         setTogglingDuty(true);
         const toggleRes = await api.patch(`/staff/${staff._id}/toggle-duty`);
         const updatedStaff = toggleRes.data.data;
+        const message = toggleRes.data.message;
 
         setStaffData((prev: any) => ({
           ...prev,
           dutyStatus: updatedStaff.dutyStatus
         }));
 
-        if (updatedStaff.dutyStatus === 'ON_DUTY') {
+        if (updatedStaff.dutyStatus === 'ON_DUTY' && message.includes('already')) {
+          toast.info(`⚡ ${staff.firstName} ${staff.lastName} is already ON DUTY — Duty will auto-end on product delivery`);
+        } else if (updatedStaff.dutyStatus === 'ON_DUTY') {
           toast.success(`🟢 Warehouse ENTRY logged — ${staff.firstName} ${staff.lastName} is now ON DUTY`);
-        } else {
-          toast.info(`🔴 Warehouse EXIT logged — ${staff.firstName} ${staff.lastName} checked out`);
         }
       } catch (toggleErr: any) {
-        toast.error(toggleErr.response?.data?.message || 'Failed to log warehouse entry/exit');
+        toast.error(toggleErr.response?.data?.message || 'Failed to log warehouse entry');
       } finally {
         setTogglingDuty(false);
       }
@@ -261,27 +262,28 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
                   </div>
                 </div>
 
-                {/* Duty Toggle Action */}
+                {/* Duty Status / Action */}
                 <div className="flex items-center space-x-2 self-center">
-                  <Button
-                    size="sm"
-                    onClick={handleToggleDuty}
-                    loading={togglingDuty}
-                    variant={staffData.dutyStatus === 'ON_DUTY' ? 'destructive' : 'default'}
-                    className="flex items-center space-x-1 text-xs px-3 shadow-md"
-                  >
-                    {staffData.dutyStatus === 'ON_DUTY' ? (
-                      <>
-                        <UserX className="h-3.5 w-3.5" />
-                        <span>End Duty</span>
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck className="h-3.5 w-3.5" />
-                        <span>Start Duty</span>
-                      </>
-                    )}
-                  </Button>
+                  {staffData.dutyStatus === 'ON_DUTY' ? (
+                    <div className="flex flex-col items-center space-y-1">
+                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] px-2.5 py-1 animate-pulse">
+                        🟢 ON DUTY
+                      </Badge>
+                      <span className="text-[9px] text-slate-500 text-center leading-tight max-w-[120px]">
+                        Auto-off on delivery
+                      </span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={handleToggleDuty}
+                      loading={togglingDuty}
+                      className="flex items-center space-x-1 text-xs px-3 shadow-md bg-emerald-600 hover:bg-emerald-500 text-white"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>Start Duty</span>
+                    </Button>
+                  )}
                 </div>
               </div>
 

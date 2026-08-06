@@ -333,8 +333,15 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
   const DutySession = (await import('../tracking/dutySession.model.js')).default;
   const SecurityScan = (await import('../security/securityScan.model.js')).default;
 
-  const isGoingOffDuty = staff.dutyStatus === 'ON_DUTY';
+  // ── RFID Scan = ENTRY ONLY (ON_DUTY) ──
+  // OFF_DUTY is exclusively handled when product is delivered at destination branch (gateEntryReceive)
+  if (staff.dutyStatus === 'ON_DUTY') {
+    // Already on duty — just acknowledge, do NOT toggle off
+    const finalStaff = await Staff.findById(req.params.id).select('-password');
+    return res.status(200).json(new ApiResponse(200, `${staff.firstName} ${staff.lastName} is already ON DUTY. Duty will auto-end when product is delivered at destination branch.`, finalStaff));
+  }
 
+  // Staff is OFF_DUTY → Set to ON_DUTY (Warehouse Entry)
   // Find a security guard assigned to this staff's branch to set as the Security Officer
   let branchGuard = null;
   if (staff.branchId) {
@@ -346,7 +353,6 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     });
   }
   if (!branchGuard) {
-    // Fallback: Find any active security guard in the database
     branchGuard = await Staff.findOne({
       role: 'security_guard',
       status: 'active',
@@ -354,17 +360,17 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     });
   }
 
-  // Use findByIdAndUpdate to bypass pre-save password validation
+  // Set ON_DUTY
   const updatedStaff = await Staff.findByIdAndUpdate(
     req.params.id,
-    { $set: { dutyStatus: isGoingOffDuty ? 'OFF_DUTY' : 'ON_DUTY' } },
+    { $set: { dutyStatus: 'ON_DUTY' } },
     { new: true }
   ).select('-password');
 
-  // Log a direct Warehouse entry/exit Security Scan record
+  // Log Warehouse Entry Security Scan record
   const scanRecord = await SecurityScan.create({
     organizationId: staff.organizationId,
-    type: isGoingOffDuty ? 'exit' : 'entry',
+    type: 'entry',
     branchId: staff.branchId || null,
     gateNumber: 'RFID-1',
     securityGuardId: branchGuard ? branchGuard._id : (req.user?._id || staff._id),
@@ -372,9 +378,7 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     result: 'approved',
     rfidCardScanned: staff.rfidCard || null,
     rfidVerified: true,
-    notes: isGoingOffDuty 
-      ? 'RFID Attendance Terminal - Warehouse Exit Check-out (Duty Completed)' 
-      : 'RFID Attendance Terminal - Warehouse Entry Check-in (Duty Started)'
+    notes: 'RFID Attendance Terminal - Warehouse Entry Check-in (Duty Started)'
   });
 
   // Populate SecurityScan details for WebSocket live feed broadcast
@@ -388,29 +392,18 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
     io.emit('security_scan_logged', populatedScan);
   }
 
-  if (isGoingOffDuty) {
-    // Was ON_DUTY, now going OFF_DUTY
-    const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
-    if (activeSession) {
-      activeSession.status = 'COMPLETED';
-      activeSession.endTime = new Date();
-      await activeSession.save();
-    }
-    await Staff.findByIdAndUpdate(req.params.id, { $set: { activeDutySessionId: null } });
-  } else {
-    // Was OFF_DUTY, now going ON_DUTY
-    let activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
-    if (!activeSession) {
-      activeSession = await DutySession.create({
-        organizationId: staff.organizationId,
-        staffId: staff._id,
-        branchId: staff.branchId,
-        status: 'ON_DUTY',
-        startTime: new Date()
-      });
-    }
-    await Staff.findByIdAndUpdate(req.params.id, { $set: { activeDutySessionId: activeSession._id } });
+  // Create Duty Session
+  let activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+  if (!activeSession) {
+    activeSession = await DutySession.create({
+      organizationId: staff.organizationId,
+      staffId: staff._id,
+      branchId: staff.branchId,
+      status: 'ON_DUTY',
+      startTime: new Date()
+    });
   }
+  await Staff.findByIdAndUpdate(req.params.id, { $set: { activeDutySessionId: activeSession._id } });
 
   const finalStaff = await Staff.findById(req.params.id).select('-password');
   res.status(200).json(new ApiResponse(200, `Duty status updated to ${finalStaff.dutyStatus}`, finalStaff));
