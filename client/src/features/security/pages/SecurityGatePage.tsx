@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { io } from 'socket.io-client';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { Button } from '../../../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
@@ -104,6 +105,23 @@ export const SecurityGatePage: React.FC = () => {
 
   React.useEffect(() => {
     fetchSecurityHistory();
+
+    const socketUrl = ((import.meta as any).env?.VITE_API_URL || 'http://localhost:5000').replace('/api/v1', '');
+    const socket = io(socketUrl, {
+      withCredentials: true
+    });
+
+    socket.on('security_scan_logged', (newScan: any) => {
+      setHistoryLogs(prev => {
+        const exists = prev.some(s => s._id === newScan._id);
+        if (exists) return prev;
+        return [newScan, ...prev];
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const handleStaffQrScan = async (scannedCode: string) => {
@@ -789,18 +807,33 @@ export const SecurityGatePage: React.FC = () => {
                               })}
                             </div>
                           ) : (
-                            <span className="text-slate-400 text-[11px]">Manifest Payload Items</span>
+                            <Badge variant="outline" className={`text-[10px] font-mono ${log.type === 'exit' ? 'border-amber-500/30 text-amber-300 bg-amber-950/20' : 'border-emerald-500/30 text-emerald-300 bg-emerald-950/20'}`}>
+                              {log.type === 'exit' ? '🚪 Warehouse Exit (No Products)' : '📥 Warehouse Entry (Pass-Through)'}
+                            </Badge>
                           )}
                         </td>
 
                         {/* Route / Transfer ID */}
                         <td className="py-3 px-3 whitespace-nowrap">
-                          <p className="font-mono font-bold text-indigo-400">
-                            {transferObj?.transferId || 'N/A'}
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            {transferObj?.fromBranchId?.name || 'HO'} ➔ {transferObj?.toBranchId?.name || 'Branch'}
-                          </p>
+                          {transferObj ? (
+                            <>
+                              <p className="font-mono font-bold text-indigo-400">
+                                {transferObj.transferId}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                {transferObj.fromBranchId?.name || 'HO'} ➔ {transferObj.toBranchId?.name || 'Branch'}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-mono font-bold text-slate-300">
+                                RFID Smart Swipe
+                              </p>
+                              <p className="text-[10px] text-slate-400 truncate max-w-[150px]" title={log.notes}>
+                                {log.notes || 'Attendance / Pass-through'}
+                              </p>
+                            </>
+                          )}
                         </td>
 
                         {/* Gate & Type */}

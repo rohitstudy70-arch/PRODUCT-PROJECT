@@ -15,9 +15,17 @@ export const getSecurityScans = asyncHandler(async (req, res) => {
 
   const query = { organizationId: req.user.organizationId };
 
-  // If logged in user is security guard, filter by their securityGuardId
+  // If logged in user is security guard, filter by their securityGuardId OR branchId
   if (req.user.role === 'security_guard') {
-    query.securityGuardId = req.user._id;
+    const guardBranchId = req.user.branchId?._id || req.user.branchId;
+    if (guardBranchId) {
+      query.$or = [
+        { securityGuardId: req.user._id },
+        { branchId: guardBranchId }
+      ];
+    } else {
+      query.securityGuardId = req.user._id;
+    }
   }
 
   if (result) query.result = result;

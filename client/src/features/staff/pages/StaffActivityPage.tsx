@@ -267,7 +267,9 @@ export const StaffActivityPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <span className="text-slate-500 text-xs font-mono">-</span>
+          <span className="text-slate-400 text-xs font-mono truncate max-w-[130px]" title={item.notes}>
+            {item.notes ? item.notes.replace('RFID Attendance Terminal - ', '') : 'Direct Gate Swipe'}
+          </span>
         )
       )
     }
