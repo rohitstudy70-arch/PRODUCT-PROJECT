@@ -333,12 +333,76 @@ export const toggleStaffDutyStatus = asyncHandler(async (req, res) => {
   const DutySession = (await import('../tracking/dutySession.model.js')).default;
   const SecurityScan = (await import('../security/securityScan.model.js')).default;
 
-  // ── RFID Scan = ENTRY ONLY (ON_DUTY) ──
-  // OFF_DUTY is exclusively handled when product is delivered at destination branch (gateEntryReceive)
+  // ── SMART RFID DUTY LOGIC ──
+  // If ON_DUTY + has active products/transfers → Stay ON_DUTY (duty ends on delivery)
+  // If ON_DUTY + NO active products → Allow OFF_DUTY (clean warehouse exit)
   if (staff.dutyStatus === 'ON_DUTY') {
-    // Already on duty — just acknowledge, do NOT toggle off
+    const Product = (await import('../product/product.model.js')).default;
+    const Transfer = (await import('../transfer/transfer.model.js')).default;
+
+    // Check if staff has any active assigned products (in_transit) or pending/active transfers
+    const activeProductCount = await Product.countDocuments({
+      currentHolderId: staff._id,
+      status: { $in: ['in_transit', 'assigned'] },
+      isDeleted: { $ne: true }
+    });
+
+    const activeTransferCount = await Transfer.countDocuments({
+      assignedStaffId: staff._id,
+      status: { $in: ['approved', 'preparing', 'ready_for_dispatch', 'in_transit'] }
+    });
+
+    if (activeProductCount > 0 || activeTransferCount > 0) {
+      // Has active products/transfers — BLOCK exit, stay ON_DUTY
+      const finalStaff = await Staff.findById(req.params.id).select('-password');
+      return res.status(200).json(new ApiResponse(200, `${staff.firstName} ${staff.lastName} is ON DUTY with ${activeProductCount} active product(s) & ${activeTransferCount} transfer(s). Duty will auto-end when product is delivered at destination branch.`, finalStaff));
+    }
+
+    // ── No active products — Allow clean warehouse EXIT (OFF_DUTY) ──
+    let branchGuard = null;
+    if (staff.branchId) {
+      branchGuard = await Staff.findOne({ branchId: staff.branchId, role: 'security_guard', status: 'active', isDeleted: { $ne: true } });
+    }
+    if (!branchGuard) {
+      branchGuard = await Staff.findOne({ role: 'security_guard', status: 'active', isDeleted: { $ne: true } });
+    }
+
+    await Staff.findByIdAndUpdate(req.params.id, { $set: { dutyStatus: 'OFF_DUTY', activeDutySessionId: null } });
+
+    // Close duty session
+    const activeSession = await DutySession.findOne({ staffId: staff._id, status: 'ON_DUTY' });
+    if (activeSession) {
+      activeSession.status = 'COMPLETED';
+      activeSession.endTime = new Date();
+      await activeSession.save();
+    }
+
+    // Log Warehouse Exit Security Scan
+    const exitScan = await SecurityScan.create({
+      organizationId: staff.organizationId,
+      type: 'exit',
+      branchId: staff.branchId || null,
+      gateNumber: 'RFID-1',
+      securityGuardId: branchGuard ? branchGuard._id : (req.user?._id || staff._id),
+      staffQR: { scanned: true, valid: true, staffId: staff._id },
+      result: 'approved',
+      rfidCardScanned: staff.rfidCard || null,
+      rfidVerified: true,
+      notes: 'RFID Attendance Terminal - Warehouse Exit (No active products, clean checkout)'
+    });
+
+    const populatedExitScan = await SecurityScan.findById(exitScan._id)
+      .populate('branchId', 'name code city')
+      .populate('staffQR.staffId', 'firstName lastName employeeId role rfidCard designation avatar')
+      .populate('securityGuardId', 'firstName lastName employeeId');
+
+    const ioExit = req.app.get('io');
+    if (ioExit) {
+      ioExit.emit('security_scan_logged', populatedExitScan);
+    }
+
     const finalStaff = await Staff.findById(req.params.id).select('-password');
-    return res.status(200).json(new ApiResponse(200, `${staff.firstName} ${staff.lastName} is already ON DUTY. Duty will auto-end when product is delivered at destination branch.`, finalStaff));
+    return res.status(200).json(new ApiResponse(200, `🔴 ${staff.firstName} ${staff.lastName} checked out — OFF DUTY (no active products)`, finalStaff));
   }
 
   // Staff is OFF_DUTY → Set to ON_DUTY (Warehouse Entry)

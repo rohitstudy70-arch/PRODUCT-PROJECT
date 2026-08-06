@@ -102,7 +102,7 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
       setActiveProducts(activeAssignedProducts || []);
       toast.success(`Staff Found: ${staff.firstName} ${staff.lastName} (${staff.employeeId})`);
 
-      // ── Auto Duty ON (Entry) — Duty OFF only happens on product delivery at destination branch ──
+      // ── Smart Duty: Entry ON / Exit OFF (if no products) / Stay ON (if products assigned) ──
       try {
         setTogglingDuty(true);
         const toggleRes = await api.patch(`/staff/${staff._id}/toggle-duty`);
@@ -114,9 +114,14 @@ export const StaffRFIDTerminalModal: React.FC<StaffRFIDTerminalModalProps> = ({
           dutyStatus: updatedStaff.dutyStatus
         }));
 
-        if (updatedStaff.dutyStatus === 'ON_DUTY' && message.includes('already')) {
-          toast.info(`⚡ ${staff.firstName} ${staff.lastName} is already ON DUTY — Duty will auto-end on product delivery`);
+        if (updatedStaff.dutyStatus === 'OFF_DUTY') {
+          // Clean exit — no active products
+          toast.info(`🔴 Warehouse EXIT — ${staff.firstName} ${staff.lastName} checked out (no active products)`);
+        } else if (updatedStaff.dutyStatus === 'ON_DUTY' && message.includes('active product')) {
+          // Has products — blocked exit
+          toast.warning(`⚡ ${staff.firstName} ${staff.lastName} has active products/transfers — Duty stays ON until delivery`);
         } else if (updatedStaff.dutyStatus === 'ON_DUTY') {
+          // Fresh entry
           toast.success(`🟢 Warehouse ENTRY logged — ${staff.firstName} ${staff.lastName} is now ON DUTY`);
         }
       } catch (toggleErr: any) {
