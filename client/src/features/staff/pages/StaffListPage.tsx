@@ -268,7 +268,7 @@ export const StaffListPage: React.FC = () => {
       switch(role) {
         case 'staff': return 'Logistics Courier';
         case 'security_guard': return 'Gate Security Officer';
-        case 'store_manager': return 'Inventory Manager';
+        case 'store_manager': return 'Branch Manager';
         case 'branch_admin': return 'Branch Administrator';
         case 'super_admin': return 'HQ Administrator';
         default: return 'Staff Member';
@@ -1082,7 +1082,7 @@ export const StaffListPage: React.FC = () => {
               >
                 <option value="staff">Delivery Staff / Courier</option>
                 <option value="security_guard">Security Guard Scanner</option>
-                <option value="store_manager">Store Room Manager</option>
+                <option value="store_manager">Branch Manager</option>
                 <option value="branch_admin">Branch Administrator</option>
                 <option value="super_admin">Organization Administrator</option>
               </select>

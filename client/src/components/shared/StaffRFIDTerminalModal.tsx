@@ -6,7 +6,6 @@ import { Badge } from '../ui/badge';
 import { 
   CreditCard, 
   UserCheck, 
-  UserX, 
   Phone, 
   User, 
   Building2, 
