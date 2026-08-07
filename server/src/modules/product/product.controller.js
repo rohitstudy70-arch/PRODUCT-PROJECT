@@ -143,14 +143,30 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   if (req.user.role === 'staff') {
     query.currentHolderId = req.user._id;
-  } else if (req.user.role === 'authorized_person' && req.user.branchId) {
-    query.currentBranchId = req.user.branchId;
   } else if (branchId) {
     if (branchId === 'null' || branchId === 'CENTRAL') {
       query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];
     } else {
-      query.currentBranchId = branchId;
+      const targetBranch = await Branch.findById(branchId);
+      if (targetBranch && (targetBranch.code?.startsWith('PR') || targetBranch.name?.toLowerCase().includes('purnea') || targetBranch.name?.toLowerCase().includes('central'))) {
+        const purneaBranches = await Branch.find({
+          $or: [
+            { code: { $regex: '^PR', $options: 'i' } },
+            { name: { $regex: 'purnea|central', $options: 'i' } }
+          ]
+        }).select('_id');
+        const purneaIds = purneaBranches.map(b => b._id);
+        query.$or = [
+          { currentBranchId: { $in: purneaIds } },
+          { currentBranchId: null },
+          { currentBranchId: { $exists: false } }
+        ];
+      } else {
+        query.currentBranchId = branchId;
+      }
     }
+  } else if (req.user.role === 'authorized_person' && req.user.branchId) {
+    query.currentBranchId = req.user.branchId;
   }
 
   if (search) {

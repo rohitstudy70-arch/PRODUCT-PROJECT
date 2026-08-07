@@ -118,13 +118,18 @@ export const TransferPage: React.FC = () => {
     }
   };
 
-  const fetchStaffAndProducts = async () => {
+  const fetchStaffAndProducts = async (targetBranchId?: string) => {
     try {
       // Only fetch courier/delivery staff (role=staff), not admins or security guards
       const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
       setStaffList(stRes.data?.data || []);
 
-      const prRes = await api.get('/products', { params: { limit: 500 } });
+      const branchParam = targetBranchId || fromBranchId;
+      const params: any = { limit: 500 };
+      if (branchParam) {
+        params.branchId = branchParam;
+      }
+      const prRes = await api.get('/products', { params });
       setProducts(prRes.data?.data || []);
     } catch (err) {
       console.error('[TransferPage] Error fetching staff/products:', err);
@@ -153,10 +158,16 @@ export const TransferPage: React.FC = () => {
         const defaultId = userBranchIdStr || (centralBranch ? centralBranch._id : ((brList || [])[0] ? (brList || [])[0]._id : ''));
         console.log('[TransferPage] Setting fromBranchId:', defaultId, '| centralBranch:', centralBranch?.name, '| total branches:', (brList || []).length);
         setFromBranchId(defaultId);
+        fetchStaffAndProducts(defaultId);
       });
-      fetchStaffAndProducts();
     }
   }, [createModalOpen]);
+
+  useEffect(() => {
+    if (createModalOpen && fromBranchId) {
+      fetchStaffAndProducts(fromBranchId);
+    }
+  }, [fromBranchId]);
 
   const handleOpenCreateModal = () => {
     setToBranchId('');
@@ -486,25 +497,26 @@ export const TransferPage: React.FC = () => {
                 {products
                   .filter(p => {
                     if (p.status && p.status !== 'available') return false;
+                    if (!fromBranchId) return true;
+
                     const selectedBranch = branches.find(b => b._id === fromBranchId);
                     const isCentralSource = fromBranchId === 'CENTRAL' ||
-                      selectedBranch?.code === 'PRN' ||
-                      selectedBranch?.name.toLowerCase().includes('purnea') ||
-                      selectedBranch?.name.toLowerCase().includes('central');
+                      selectedBranch?.code?.startsWith('PR') ||
+                      selectedBranch?.name?.toLowerCase().includes('purnea') ||
+                      selectedBranch?.name?.toLowerCase().includes('central');
 
-                    if (!p.currentBranchId && isCentralSource) return true;
-                    if (!p.currentBranchId) return isCentralSource;
+                    if (!p.currentBranchId) return true;
 
                     const pBranchId = typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId;
+                    const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
+                    const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
+
                     if (pBranchId === fromBranchId) return true;
 
                     if (isCentralSource) {
-                      const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
-                      const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
-                      if (pBranchCode === 'PRN' || pBranchName.toLowerCase().includes('purnea') || pBranchName.toLowerCase().includes('central')) {
+                      if (pBranchCode?.startsWith('PR') || pBranchName?.toLowerCase().includes('purnea') || pBranchName?.toLowerCase().includes('central')) {
                         return true;
                       }
-                      // Show all available devices when Central Office is selected
                       return true;
                     }
 
