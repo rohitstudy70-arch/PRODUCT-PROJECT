@@ -10,14 +10,16 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const globalQuery = { isDeleted: { $ne: true } };
   const transferQuery = {};
 
+  // Scope product queries to user's branch for non-super_admin
   if (req.user.role !== 'super_admin' && req.user.branchId) {
+    globalQuery.currentBranchId = req.user.branchId;
     transferQuery.$or = [
       { fromBranchId: req.user.branchId },
       { toBranchId: req.user.branchId }
     ];
   }
 
-  // Count global enterprise products by status (Always fetches all 7 products)
+  // Count products by status (scoped to branch for non-super_admin)
   const totalProducts = await Product.countDocuments(globalQuery);
   const availableProducts = await Product.countDocuments({ ...globalQuery, status: 'available' });
   const inTransitProducts = await Product.countDocuments({ ...globalQuery, status: 'in_transit' });

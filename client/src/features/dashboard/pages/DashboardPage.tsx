@@ -58,7 +58,7 @@ export const DashboardPage: React.FC = () => {
     if (!user) return;
     try {
       setLoading(true);
-      if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager') {
+      if (user.role === 'super_admin' || user.role === 'branch_admin' || user.role === 'store_manager' || user.role === 'authorized_person') {
         const [statsRes, transfersRes, scansRes] = await Promise.allSettled([
           api.get('/dashboard/stats'),
           api.get('/transfers', { params: { limit: 10 } }),
