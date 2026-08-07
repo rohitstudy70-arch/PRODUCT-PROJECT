@@ -118,7 +118,10 @@ export const TransferPage: React.FC = () => {
     }
   };
 
+  const [productsLoading, setProductsLoading] = useState(false);
+
   const fetchStaffAndProducts = async (targetBranchId?: string) => {
+    setProductsLoading(true);
     try {
       // Only fetch courier/delivery staff (role=staff), not admins or security guards
       const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
@@ -136,6 +139,8 @@ export const TransferPage: React.FC = () => {
       setProducts(fetchedProducts);
     } catch (err: any) {
       console.error('[TransferPage] Error fetching staff/products:', err?.response?.status, err?.response?.data, err);
+    } finally {
+      setProductsLoading(false);
     }
   };
 
@@ -173,6 +178,13 @@ export const TransferPage: React.FC = () => {
   }, [fromBranchId]);
 
   const handleOpenCreateModal = () => {
+    const userBranchIdStr = user?.branchId
+      ? (typeof user.branchId === 'object' ? (user.branchId as any)._id : user.branchId)
+      : '';
+    if (userBranchIdStr) {
+      setFromBranchId(userBranchIdStr);
+      fetchStaffAndProducts(userBranchIdStr);
+    }
     setToBranchId('');
     setAssignedStaffId('');
     setSelectedProductIds([]);
@@ -474,6 +486,12 @@ export const TransferPage: React.FC = () => {
               >
                 <option value="">Select product to add...</option>
                 {(() => {
+                  if (productsLoading) {
+                    return (
+                      <option value="" disabled>Loading available devices at source branch...</option>
+                    );
+                  }
+
                   const availableProducts = products.filter(p => {
                     return !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
                   });
