@@ -324,7 +324,7 @@ export const ProductListPage: React.FC = () => {
             <span>View</span>
           </Button>
         ) : (
-          user?.role === 'super_admin' ? (
+          (user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'authorized_person') ? (
             <Button variant="outline" size="sm" onClick={() => handleGenerateQR(item._id)} className="h-7 text-xs border-indigo-500/30 text-indigo-400">
               Generate
             </Button>
