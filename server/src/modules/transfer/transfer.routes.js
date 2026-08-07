@@ -3,6 +3,7 @@ import {
   createTransfer,
   approveTransfer,
   assignCourier,
+  sendCourierOtp,
   getAvailableCouriers,
   getTransfers,
   getTransferById,
@@ -33,7 +34,8 @@ router.post('/assign-imei', authorize('super_admin', 'branch_admin'), auditTrail
 // Create transfer (Authorized Person, Branch Admin, Store Manager, Super Admin)
 router.post('/', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('transfer', 'create'), createTransfer);
 
-// Branch Manager assigns courier to pending transfer
+// Branch Manager sends OTP to Courier Boy & assigns courier
+router.post('/:id/send-courier-otp', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('transfer', 'send_courier_otp'), sendCourierOtp);
 router.patch('/:id/assign-courier', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('transfer', 'assign_courier'), assignCourier);
 
 router.patch('/:id/approve', authorize('super_admin'), auditTrail('transfer', 'approve'), approveTransfer);

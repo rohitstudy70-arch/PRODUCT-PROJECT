@@ -31,6 +31,14 @@ const transferSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'preparing', 'ready_for_dispatch', 'dispatched', 'in_transit', 'arrived', 'received', 'cancelled', 'rejected'],
       default: 'pending'
     },
+    courierOtp: {
+      code: String,
+      expiresAt: Date,
+      assignedStaffId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Staff'
+      }
+    },
     notes: String,
     reason: {
       type: String,

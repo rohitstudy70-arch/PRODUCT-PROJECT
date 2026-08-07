@@ -12,7 +12,10 @@ import {
   Scan,
   Camera,
   Search,
-  Check
+  Check,
+  Smartphone,
+  KeyRound,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
@@ -64,6 +67,12 @@ export const BranchManagerTransferPanel: React.FC = () => {
   const [showCamera, setShowCamera] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // OTP Verification States
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpInfo, setOtpInfo] = useState<{ phoneMasked?: string; courierName?: string; otpDevMode?: string } | null>(null);
+
   const getId = (value: any) => value ? (typeof value === 'object' ? value._id : value) : '';
   const branchId = getId(user?.branchId);
 
@@ -103,6 +112,9 @@ export const BranchManagerTransferPanel: React.FC = () => {
     setScanInput('');
     setSearchQuery('');
     setShowCamera(false);
+    setOtpStep(false);
+    setOtpInput('');
+    setOtpInfo(null);
     setActionError('');
     setActionSuccess('');
     setAssignModalOpen(true);
@@ -133,9 +145,46 @@ export const BranchManagerTransferPanel: React.FC = () => {
     }
   };
 
-  const handleAssignCourier = async () => {
+  // Step 1: Send SMS OTP to Courier's phone
+  const handleSendOtp = async () => {
     if (!selectedTransfer || !selectedCourierId) {
       setActionError('Please scan or select a Courier Boy first.');
+      return;
+    }
+
+    try {
+      setSendingOtp(true);
+      setActionError('');
+      setActionSuccess('');
+
+      const res = await API.post(`/transfers/${selectedTransfer._id}/send-courier-otp`, {
+        assignedStaffId: selectedCourierId
+      });
+
+      const data = res.data?.data || res.data || {};
+      setOtpInfo({
+        phoneMasked: data.phoneMasked,
+        courierName: data.courierName,
+        otpDevMode: data.otpDevMode
+      });
+      setOtpStep(true);
+      setActionSuccess(`📱 SMS OTP sent to registered number (${data.phoneMasked || 'Courier Phone'})`);
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || 'Failed to send OTP to courier');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Step 2: Verify OTP and Confirm Assignment
+  const handleVerifyOtpAndAssign = async () => {
+    if (!selectedTransfer || !selectedCourierId) {
+      setActionError('Please select a Courier Boy.');
+      return;
+    }
+
+    if (!otpInput.trim()) {
+      setActionError('Please enter the 4-digit OTP received on Courier Boy\'s phone.');
       return;
     }
 
@@ -143,16 +192,17 @@ export const BranchManagerTransferPanel: React.FC = () => {
       setSubmitting(true);
       setActionError('');
       await API.patch(`/transfers/${selectedTransfer._id}/assign-courier`, {
-        assignedStaffId: selectedCourierId
+        assignedStaffId: selectedCourierId,
+        otp: otpInput.trim()
       });
       
-      setActionSuccess(`Courier assigned successfully to Transfer ${selectedTransfer.transferId}!`);
+      setActionSuccess(`Courier assigned & verified via OTP successfully for Transfer ${selectedTransfer.transferId}!`);
       setTimeout(() => {
         setAssignModalOpen(false);
         fetchData();
       }, 1200);
     } catch (err: any) {
-      setActionError(err.response?.data?.message || 'Failed to assign courier');
+      setActionError(err.response?.data?.message || 'Failed to verify OTP / assign courier');
     } finally {
       setSubmitting(false);
     }
@@ -187,7 +237,7 @@ export const BranchManagerTransferPanel: React.FC = () => {
                 </Badge>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Review transfer orders from Authorized Persons and assign delivery couriers.
+                Review transfer orders from Authorized Persons and assign delivery couriers via SMS OTP verification.
               </p>
             </div>
           </div>
@@ -313,7 +363,7 @@ export const BranchManagerTransferPanel: React.FC = () => {
               <div>
                 <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
                   <UserCheck className="w-5 h-5 text-blue-400" />
-                  <span>Assign Courier to Transfer Order</span>
+                  <span>{otpStep ? 'Verify SMS OTP & Assign Courier' : 'Assign Courier to Transfer Order'}</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Transfer Order <strong className="text-blue-400 font-mono">{selectedTransfer.transferId}</strong> ({selectedTransfer.totalItems} Items)
@@ -341,159 +391,249 @@ export const BranchManagerTransferPanel: React.FC = () => {
               </div>
             )}
 
-            {/* Scan Staff ID QR / Type Employee Code Box */}
-            <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg space-y-3">
-              <label className="text-xs font-semibold text-blue-300 flex items-center space-x-1.5">
-                <Scan className="w-4 h-4 text-blue-400" />
-                <span>Scan Staff ID Card / Enter Employee Code</span>
-              </label>
-
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (scanInput) handleScanCourier(scanInput);
-                }}
-                className="flex items-center space-x-2"
-              >
-                <input
-                  type="text"
-                  placeholder="Scan Staff ID or type Employee Code (e.g. EMP00074)..."
-                  value={scanInput}
-                  onChange={(e) => setScanInput(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
-                />
-                <Button 
-                  type="submit"
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs whitespace-nowrap h-9 px-3"
-                >
-                  Match
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowCamera(!showCamera)}
-                  className="h-9 px-3 border-slate-700 text-slate-300 text-xs flex items-center space-x-1"
-                >
-                  <Camera className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{showCamera ? 'Hide Camera' : 'Camera'}</span>
-                </Button>
-              </form>
-
-              {/* Camera Scanner View */}
-              {showCamera && (
-                <div className="pt-2 border-t border-slate-800">
-                  <QRScanner
-                    placeholder="Scan Staff ID QR Tag"
-                    onScanSuccess={(scanned) => handleScanCourier(scanned)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Selected Courier Summary Card */}
-            {selectedCourierObj ? (
-              <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-lg flex items-center justify-between animate-in fade-in duration-200">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-300 text-sm">
-                    {selectedCourierObj.firstName.charAt(0)}{selectedCourierObj.lastName?.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs font-bold text-slate-100">{selectedCourierObj.firstName} {selectedCourierObj.lastName}</span>
-                      <Badge className="bg-emerald-500/20 text-emerald-300 text-[10px] py-0">
-                        <Check className="w-3 h-3 mr-0.5" /> Verified Courier
-                      </Badge>
-                    </div>
-                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                      Emp ID: <strong className="text-emerald-400">{selectedCourierObj.employeeId}</strong> • Phone: {selectedCourierObj.phone}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="ghost"
-                  onClick={() => setSelectedCourierId('')}
-                  className="text-xs text-slate-400 hover:text-slate-200 h-7 px-2"
-                >
-                  Change
-                </Button>
-              </div>
-            ) : (
-              /* Courier Search & Selection List */
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-300">
-                    Or Select Courier Boy from Branch Roster *
+            {!otpStep ? (
+              /* STEP 1: SELECT / SCAN COURIER STAFF */
+              <div className="space-y-4">
+                {/* Scan Staff ID QR / Type Employee Code Box */}
+                <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg space-y-3">
+                  <label className="text-xs font-semibold text-blue-300 flex items-center space-x-1.5">
+                    <Scan className="w-4 h-4 text-blue-400" />
+                    <span>Scan Staff ID Card / Enter Employee Code</span>
                   </label>
-                  <div className="relative w-48">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (scanInput) handleScanCourier(scanInput);
+                    }}
+                    className="flex items-center space-x-2"
+                  >
                     <input
                       type="text"
-                      placeholder="Filter by name / code..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-8 pl-8 pr-2 w-full rounded-md border border-slate-800 bg-slate-950 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                      placeholder="Scan Staff ID or type Employee Code (e.g. EMP00074)..."
+                      value={scanInput}
+                      onChange={(e) => setScanInput(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
                     />
-                  </div>
+                    <Button 
+                      type="submit"
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs whitespace-nowrap h-9 px-3"
+                    >
+                      Match
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowCamera(!showCamera)}
+                      className="h-9 px-3 border-slate-700 text-slate-300 text-xs flex items-center space-x-1"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{showCamera ? 'Hide Camera' : 'Camera'}</span>
+                    </Button>
+                  </form>
+
+                  {/* Camera Scanner View */}
+                  {showCamera && (
+                    <div className="pt-2 border-t border-slate-800">
+                      <QRScanner
+                        placeholder="Scan Staff ID QR Tag"
+                        onScanSuccess={(scanned) => handleScanCourier(scanned)}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {filteredCouriers.length === 0 ? (
-                  <p className="text-xs text-amber-400 py-3 text-center bg-slate-950/40 rounded-lg border border-slate-800">
-                    No matching couriers found in branch roster.
-                  </p>
-                ) : (
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
-                    {filteredCouriers.map((c) => (
-                      <div 
-                        key={c._id}
-                        onClick={() => setSelectedCourierId(c._id)}
-                        className={`p-2.5 rounded-lg border cursor-pointer flex items-center justify-between transition-all ${
-                          selectedCourierId === c._id 
-                            ? 'bg-blue-600/15 border-blue-500 text-slate-100 shadow-sm' 
-                            : 'bg-slate-950/40 border-slate-800/80 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <input 
-                            type="radio" 
-                            name="courierSelect" 
-                            checked={selectedCourierId === c._id}
-                            onChange={() => setSelectedCourierId(c._id)}
-                            className="accent-blue-500"
-                          />
-                          <div>
-                            <p className="text-xs font-bold text-slate-200">{c.firstName} {c.lastName}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">Emp ID: {c.employeeId} • {c.phone}</p>
-                          </div>
-                        </div>
-                        <Badge className="bg-emerald-500/10 text-emerald-400 text-[10px]">
-                          Available
-                        </Badge>
+                {/* Selected Courier Summary Card */}
+                {selectedCourierObj ? (
+                  <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-lg flex items-center justify-between animate-in fade-in duration-200">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-300 text-sm">
+                        {selectedCourierObj.firstName.charAt(0)}{selectedCourierObj.lastName?.charAt(0)}
                       </div>
-                    ))}
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold text-slate-100">{selectedCourierObj.firstName} {selectedCourierObj.lastName}</span>
+                          <Badge className="bg-emerald-500/20 text-emerald-300 text-[10px] py-0">
+                            <Check className="w-3 h-3 mr-0.5" /> Verified Courier
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                          Emp ID: <strong className="text-emerald-400">{selectedCourierObj.employeeId}</strong> • Phone: {selectedCourierObj.phone}
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => setSelectedCourierId('')}
+                      className="text-xs text-slate-400 hover:text-slate-200 h-7 px-2"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                ) : (
+                  /* Courier Search & Selection List */
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-300">
+                        Or Select Courier Boy from Branch Roster *
+                      </label>
+                      <div className="relative w-48">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+                        <input
+                          type="text"
+                          placeholder="Filter by name / code..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="h-8 pl-8 pr-2 w-full rounded-md border border-slate-800 bg-slate-950 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {filteredCouriers.length === 0 ? (
+                      <p className="text-xs text-amber-400 py-3 text-center bg-slate-950/40 rounded-lg border border-slate-800">
+                        No matching couriers found in branch roster.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                        {filteredCouriers.map((c) => (
+                          <div 
+                            key={c._id}
+                            onClick={() => setSelectedCourierId(c._id)}
+                            className={`p-2.5 rounded-lg border cursor-pointer flex items-center justify-between transition-all ${
+                              selectedCourierId === c._id 
+                                ? 'bg-blue-600/15 border-blue-500 text-slate-100 shadow-sm' 
+                                : 'bg-slate-950/40 border-slate-800/80 text-slate-300 hover:border-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <input 
+                                type="radio" 
+                                name="courierSelect" 
+                                checked={selectedCourierId === c._id}
+                                onChange={() => setSelectedCourierId(c._id)}
+                                className="accent-blue-500"
+                              />
+                              <div>
+                                <p className="text-xs font-bold text-slate-200">{c.firstName} {c.lastName}</p>
+                                <p className="text-[10px] text-slate-400 font-mono">Emp ID: {c.employeeId} • {c.phone}</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-emerald-500/10 text-emerald-400 text-[10px]">
+                              Available
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setAssignModalOpen(false)}
+                    className="text-xs border-slate-700 text-slate-300"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp || !selectedCourierId}
+                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-5"
+                  >
+                    {sendingOtp ? (
+                      <span className="flex items-center space-x-1">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" />
+                        Sending SMS OTP...
+                      </span>
+                    ) : (
+                      <span className="flex items-center space-x-1">
+                        <Smartphone className="w-3.5 h-3.5 mr-1" />
+                        Send SMS OTP to Courier
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* STEP 2: OTP VERIFICATION STEP */
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 bg-slate-950/80 border border-blue-500/30 rounded-xl space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-blue-500/20 rounded-lg text-blue-400 border border-blue-500/30">
+                      <Smartphone className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-100">
+                        SMS OTP Sent to {selectedCourierObj?.firstName} {selectedCourierObj?.lastName}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono">
+                        Mobile: <strong className="text-blue-400">{otpInfo?.phoneMasked || selectedCourierObj?.phone}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {otpInfo?.otpDevMode && (
+                    <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[11px] text-amber-300 font-mono flex items-center justify-between">
+                      <span>🔑 [DEMO MODE OTP]:</span>
+                      <strong className="text-amber-400 text-sm tracking-widest">{otpInfo.otpDevMode}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                    <KeyRound className="w-4 h-4 text-blue-400" />
+                    <span>Enter 4-Digit OTP Received on Courier Boy's Phone *</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter 4-digit OTP (e.g. 4892)"
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value)}
+                    className="flex h-11 w-full rounded-lg border border-blue-500/50 bg-slate-950 px-4 text-center font-mono text-lg tracking-widest text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-slate-500 text-center">
+                    Courier Boy must share the SMS code received on SIM card to authorize delivery duty.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp}
+                    className="text-xs text-blue-400 hover:text-blue-300 p-0 flex items-center space-x-1"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${sendingOtp ? 'animate-spin' : ''}`} />
+                    <span>Resend OTP SMS</span>
+                  </Button>
+
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setOtpStep(false)}
+                      className="text-xs border-slate-700 text-slate-300"
+                    >
+                      Back
+                    </Button>
+                    <Button 
+                      onClick={handleVerifyOtpAndAssign}
+                      disabled={submitting || !otpInput.trim()}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-5"
+                    >
+                      {submitting ? 'Verifying...' : 'Verify OTP & Confirm Assignment'}
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
-
-            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-              <Button 
-                variant="outline"
-                onClick={() => setAssignModalOpen(false)}
-                className="text-xs border-slate-700 text-slate-300"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleAssignCourier}
-                disabled={submitting || !selectedCourierId}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-5"
-              >
-                {submitting ? 'Assigning...' : 'Confirm Assignment'}
-              </Button>
-            </div>
           </div>
         </div>
       )}

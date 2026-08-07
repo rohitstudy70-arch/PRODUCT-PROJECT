@@ -6,6 +6,14 @@ import Product from '../product/product.model.js';
 import ProductHistory from '../product/productHistory.model.js';
 import Inventory from '../inventory/inventory.model.js';
 import StockMovement from '../inventory/stockMovement.model.js';
+import mongoose from 'mongoose';
+import Transfer from './transfer.model.js';
+import DutySession from '../tracking/dutySession.model.js';
+import TransferItem from './transferItem.model.js';
+import Product from '../product/product.model.js';
+import ProductHistory from '../product/productHistory.model.js';
+import Inventory from '../inventory/inventory.model.js';
+import StockMovement from '../inventory/stockMovement.model.js';
 import Staff from '../staff/staff.model.js';
 import Branch from '../branch/branch.model.js';
 import QRCode from '../qr/qrCode.model.js';
@@ -16,6 +24,7 @@ import ApiError from '../../utils/ApiError.js';
 import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js';
+import { sendSMS } from '../../utils/smsService.js';
 
 const idString = (value) => {
   if (!value) return '';
@@ -118,9 +127,70 @@ export const createTransfer = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, 'Transfer created successfully', transfer));
 });
 
+// --- SEND OTP TO COURIER BOY FOR ASSIGNMENT ---
+export const sendCourierOtp = asyncHandler(async (req, res) => {
+  const { assignedStaffId } = req.body;
+  if (!assignedStaffId) {
+    throw new ApiError(400, 'Assigned courier staff ID is required');
+  }
+
+  const transfer = await Transfer.findById(req.params.id);
+  if (!transfer) {
+    throw new ApiError(404, 'Transfer not found');
+  }
+
+  if (transfer.status !== 'pending') {
+    throw new ApiError(400, 'OTP can only be requested for pending transfer orders');
+  }
+
+  const sourceBranchId = idString(transfer.fromBranchId);
+  assertSourceBranchManager(req, sourceBranchId);
+
+  const courier = await Staff.findById(assignedStaffId);
+  if (!courier) {
+    throw new ApiError(404, 'Selected courier staff not found');
+  }
+
+  if (courier.role !== 'staff' || courier.status !== 'active') {
+    throw new ApiError(400, 'Selected person is not an active Courier Boy / Delivery Staff');
+  }
+
+  if (!courierIsAvailableAtBranch(courier, sourceBranchId)) {
+    throw new ApiError(400, 'Selected courier is not available at the source branch');
+  }
+
+  // Generate 4-digit OTP
+  const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  transfer.courierOtp = {
+    code: otpCode,
+    expiresAt,
+    assignedStaffId
+  };
+  await transfer.save();
+
+  const phone = courier.phone || '';
+  const maskedPhone = phone.length >= 10 
+    ? `${phone.slice(0, 2)}******${phone.slice(-2)}` 
+    : phone;
+
+  const smsResult = await sendSMS(phone, otpCode, courier.firstName);
+
+  res.status(200).json(
+    new ApiResponse(200, `OTP sent via SMS to Courier Boy (${courier.firstName} - ${maskedPhone})`, {
+      transferId: transfer.transferId,
+      courierName: `${courier.firstName} ${courier.lastName}`,
+      phoneMasked: maskedPhone,
+      otpDevMode: otpCode,
+      smsResult
+    })
+  );
+});
+
 // --- ASSIGN COURIER TO TRANSFER (BRANCH MANAGER) ---
 export const assignCourier = asyncHandler(async (req, res) => {
-  const { assignedStaffId } = req.body;
+  const { assignedStaffId, otp } = req.body;
   if (!assignedStaffId) {
     throw new ApiError(400, 'Assigned courier staff ID is required');
   }
@@ -150,10 +220,24 @@ export const assignCourier = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Selected courier is not available at the source branch');
   }
 
+  // Verify OTP if OTP was sent
+  if (otp) {
+    if (!transfer.courierOtp || !transfer.courierOtp.code) {
+      throw new ApiError(400, 'No OTP requested for this transfer. Please click "Send OTP to Courier" first.');
+    }
+    if (new Date() > new Date(transfer.courierOtp.expiresAt)) {
+      throw new ApiError(400, 'OTP has expired. Please request a new OTP.');
+    }
+    if (transfer.courierOtp.code !== otp.trim()) {
+      throw new ApiError(400, 'Invalid OTP. Please enter the 4-digit code sent to Courier Boy\'s phone.');
+    }
+  }
+
   transfer.assignedStaffId = assignedStaffId;
   transfer.status = 'approved';
   transfer.approvedBy = req.user._id;
   transfer.approvedAt = new Date();
+  transfer.courierOtp = undefined; // Clear OTP once verified
   await transfer.save();
 
   // Send Notification to Assigned Courier
@@ -166,7 +250,7 @@ export const assignCourier = asyncHandler(async (req, res) => {
     link: `/transfers/${transfer._id}`
   });
 
-  res.status(200).json(new ApiResponse(200, 'Courier assigned successfully to transfer', transfer));
+  res.status(200).json(new ApiResponse(200, 'Courier assigned & verified via OTP successfully', transfer));
 });
 
 // --- AVAILABLE COURIERS FOR SOURCE BRANCH ---
