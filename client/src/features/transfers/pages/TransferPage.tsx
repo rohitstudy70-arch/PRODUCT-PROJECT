@@ -185,34 +185,10 @@ export const TransferPage: React.FC = () => {
       return;
     }
 
-    const selectedBranch = branches.find(b => b._id === fromBranchId);
-    const isCentralSource = fromBranchId === 'CENTRAL' ||
-      selectedBranch?.code === 'PRN' ||
-      selectedBranch?.name.toLowerCase().includes('purnea') ||
-      selectedBranch?.name.toLowerCase().includes('central');
-
     const matchedProduct = products.find(p => {
       const isAvailable = !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
       const matchesCode = p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p._id === scannedCode || p.imei === scannedCode;
-      
-      if (!isAvailable || !matchesCode) return false;
-
-      // If source branch is Central Office / Purnea, match products at Central Office or Purnea or unassigned
-      if (isCentralSource) {
-        if (!p.currentBranchId) return true;
-        const pBranchId = typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId;
-        const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
-        const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
-        
-        if (pBranchId === fromBranchId || pBranchCode?.startsWith('PR') || pBranchName?.toLowerCase().includes('purnea') || pBranchName?.toLowerCase().includes('central')) {
-          return true;
-        }
-        return true;
-      }
-
-      // Normal branch matching
-      const pBranchId = p.currentBranchId ? (typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId) : '';
-      return pBranchId === fromBranchId;
+      return isAvailable && matchesCode;
     });
 
     if (!matchedProduct) {
@@ -495,33 +471,7 @@ export const TransferPage: React.FC = () => {
                 <option value="">Select product to add...</option>
                 {(() => {
                   const availableProducts = products.filter(p => {
-                    if (['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status)) {
-                      return false;
-                    }
-                    if (!fromBranchId) return true;
-
-                    const selectedBranch = branches.find(b => b._id === fromBranchId);
-                    const isCentralSource = fromBranchId === 'CENTRAL' ||
-                      selectedBranch?.code?.startsWith('PR') ||
-                      selectedBranch?.name?.toLowerCase().includes('purnea') ||
-                      selectedBranch?.name?.toLowerCase().includes('central');
-
-                    if (!p.currentBranchId) return true;
-
-                    const pBranchId = typeof p.currentBranchId === 'object' ? p.currentBranchId._id : p.currentBranchId;
-                    const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
-                    const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
-
-                    if (pBranchId === fromBranchId) return true;
-
-                    if (isCentralSource) {
-                      if (pBranchCode?.startsWith('PR') || pBranchName?.toLowerCase().includes('purnea') || pBranchName?.toLowerCase().includes('central')) {
-                        return true;
-                      }
-                      return true;
-                    }
-
-                    return false;
+                    return !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
                   });
 
                   if (availableProducts.length === 0) {
