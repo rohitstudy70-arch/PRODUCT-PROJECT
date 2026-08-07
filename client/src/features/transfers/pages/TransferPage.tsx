@@ -201,7 +201,7 @@ export const TransferPage: React.FC = () => {
     }
 
     const matchedProduct = products.find(p => {
-      const isAvailable = !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
+      const isAvailable = !p.status || p.status === 'available';
       const matchesCode = p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p._id === scannedCode || p.imei === scannedCode;
       return isAvailable && matchesCode;
     });
@@ -493,7 +493,7 @@ export const TransferPage: React.FC = () => {
                   }
 
                   const availableProducts = products.filter(p => {
-                    return !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
+                    return !p.status || p.status === 'available';
                   });
 
                   if (availableProducts.length === 0) {
