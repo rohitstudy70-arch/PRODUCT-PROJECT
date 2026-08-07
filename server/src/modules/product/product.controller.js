@@ -141,15 +141,19 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   if (status) query.status = status;
   if (category) query.category = category;
 
-  console.log('[getAllProducts] user.role:', req.user.role, '| user.branchId:', req.user.branchId, '| query branchId param:', branchId);
+  const effectiveBranchId = (req.user.role === 'authorized_person' && req.user.branchId)
+    ? req.user.branchId
+    : branchId;
+
+  console.log('[getAllProducts] user.role:', req.user.role, '| user.branchId:', req.user.branchId, '| effectiveBranchId:', effectiveBranchId);
 
   if (req.user.role === 'staff') {
     query.currentHolderId = req.user._id;
-  } else if (branchId) {
-    if (branchId === 'null' || branchId === 'CENTRAL') {
+  } else if (effectiveBranchId) {
+    if (effectiveBranchId === 'null' || effectiveBranchId === 'CENTRAL') {
       query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];
     } else {
-      const targetBranch = await Branch.findById(branchId);
+      const targetBranch = await Branch.findById(effectiveBranchId);
       console.log('[getAllProducts] targetBranch:', targetBranch?.name, targetBranch?.code);
       if (targetBranch && (targetBranch.code?.startsWith('PR') || targetBranch.name?.toLowerCase().includes('purnea') || targetBranch.name?.toLowerCase().includes('central'))) {
         const purneaBranches = await Branch.find({
@@ -166,13 +170,10 @@ export const getAllProducts = asyncHandler(async (req, res) => {
         ];
         console.log('[getAllProducts] PURNEA ALIAS => purneaIds:', purneaIds);
       } else {
-        query.currentBranchId = branchId;
-        console.log('[getAllProducts] EXACT BRANCH => branchId:', branchId);
+        query.currentBranchId = effectiveBranchId;
+        console.log('[getAllProducts] EXACT BRANCH => effectiveBranchId:', effectiveBranchId);
       }
     }
-  } else if (req.user.role === 'authorized_person' && req.user.branchId) {
-    query.currentBranchId = req.user.branchId;
-    console.log('[getAllProducts] AUTHORIZED_PERSON fallback => branchId:', req.user.branchId);
   }
 
   if (search) {
