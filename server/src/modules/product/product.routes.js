@@ -29,12 +29,12 @@ router.get('/', getAllProducts);
 router.get('/:id', getProductById);
 router.get('/:id/history', getProductHistory);
 
-// Product modifications - super_admin, branch_admin, store_manager
-router.post('/', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('product', 'create'), createProduct);
-router.put('/:id', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('product', 'update'), updateProduct);
+// Product modifications - super_admin, branch_admin, store_manager, authorized_person
+router.post('/', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('product', 'create'), createProduct);
+router.put('/:id', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('product', 'update'), updateProduct);
 router.delete('/:id', authorize('super_admin', 'branch_admin'), auditTrail('product', 'delete'), deleteProduct);
 
-// QR Code generation is allowed for super_admin, branch_admin, store_manager
-router.post('/:id/generate-qr', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('product', 'generate_qr'), generateProductQR);
+// QR Code generation is allowed for super_admin, branch_admin, store_manager, authorized_person
+router.post('/:id/generate-qr', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('product', 'generate_qr'), generateProductQR);
 
 export default router;

@@ -46,7 +46,12 @@ export const getProductCategories = asyncHandler(async (req, res) => {
 
 // --- PRODUCTS ---
 export const createProduct = asyncHandler(async (req, res) => {
-  const { name, categoryId, serialNumber, imei, model, batch, vendor, purchaseDate, warranty, currentBranchId, notes, rackNumber } = req.body;
+  let { name, categoryId, serialNumber, imei, model, batch, vendor, purchaseDate, warranty, currentBranchId, notes, rackNumber } = req.body;
+
+  // Auto-set branch for authorized_person / store_manager if not provided
+  if (!currentBranchId && req.user.branchId) {
+    currentBranchId = req.user.branchId;
+  }
 
   if (!name || !categoryId || !currentBranchId) {
     throw new ApiError(400, 'Product name, category, and initial location (branch) are required');
