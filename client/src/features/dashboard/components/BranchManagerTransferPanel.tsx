@@ -157,9 +157,23 @@ export const BranchManagerTransferPanel: React.FC = () => {
       setActionError('');
       setActionSuccess('');
 
-      const res = await API.post(`/transfers/${selectedTransfer._id}/send-courier-otp`, {
-        assignedStaffId: selectedCourierId
-      });
+      let res;
+      try {
+        res = await API.post(`/transfers/${selectedTransfer._id}/send-courier-otp`, {
+          assignedStaffId: selectedCourierId
+        });
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          // Fallback to assign-courier with send_otp action if server route is still deploying
+          res = await API.patch(`/transfers/${selectedTransfer._id}/assign-courier`, {
+            assignedStaffId: selectedCourierId,
+            action: 'send_otp',
+            sendOtp: true
+          });
+        } else {
+          throw err;
+        }
+      }
 
       const data = res.data?.data || res.data || {};
       setOtpInfo({

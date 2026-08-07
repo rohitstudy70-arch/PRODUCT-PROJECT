@@ -190,7 +190,13 @@ export const sendCourierOtp = asyncHandler(async (req, res) => {
 
 // --- ASSIGN COURIER TO TRANSFER (BRANCH MANAGER) ---
 export const assignCourier = asyncHandler(async (req, res) => {
-  const { assignedStaffId, otp } = req.body;
+  const { assignedStaffId, otp, action, sendOtp } = req.body;
+
+  // Fallback: If client requested send_otp via assign-courier endpoint
+  if (action === 'send_otp' || sendOtp === true) {
+    return sendCourierOtp(req, res);
+  }
+
   if (!assignedStaffId) {
     throw new ApiError(400, 'Assigned courier staff ID is required');
   }
