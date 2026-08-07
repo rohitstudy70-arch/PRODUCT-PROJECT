@@ -225,8 +225,8 @@ export const TransferPage: React.FC = () => {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fromBranchId || !toBranchId || !assignedStaffId || selectedProductIds.length === 0) {
-      toast.error('Please fill in all required fields and select at least one product');
+    if (!fromBranchId || !toBranchId || selectedProductIds.length === 0) {
+      toast.error('Please select source branch, destination branch, and at least one product');
       return;
     }
 
@@ -363,7 +363,7 @@ export const TransferPage: React.FC = () => {
       <Toaster position="top-right" theme="dark" closeButton />
 
       <PageHeader title="Logistical Transfers" subtitle="Oversee dispatch logs, route status, and entry clearance checkpoints">
-        {(user?.role === 'super_admin' || user?.role === 'branch_admin') && (
+        {(user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'authorized_person') && (
           <Button onClick={handleOpenCreateModal} className="flex items-center space-x-1">
             <Plus className="h-4 w-4" />
             <span>Create Transfer</span>
@@ -447,13 +447,13 @@ export const TransferPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col space-y-1">
-            <label className="text-xs font-semibold text-slate-400">Assigned Delivery Courier / Staff *</label>
+            <label className="text-xs font-semibold text-slate-400">Assigned Delivery Courier / Staff (Optional)</label>
             <select
               value={assignedStaffId}
               onChange={(e) => setAssignedStaffId(e.target.value)}
               className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
             >
-              <option value="">Select Staff / Courier</option>
+              <option value="">Leave empty for Branch Manager to assign</option>
               {staffList
                 .filter(s => s.status !== 'inactive' && s.status !== 'suspended')
                 .map(s => {

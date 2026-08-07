@@ -60,6 +60,14 @@ export const createStaff = asyncHandler(async (req, res) => {
     }
   }
 
+  // Check 5 Authorized Persons limit per branch
+  if (role === 'authorized_person' && branchId) {
+    const authorizedCount = await Staff.countDocuments({ branchId, role: 'authorized_person', status: { $ne: 'inactive' } });
+    if (authorizedCount >= 5) {
+      throw new ApiError(400, 'Maximum 5 Authorized Persons allowed per branch');
+    }
+  }
+
   // Generate unique employee ID (EMP00001)
   const employeeId = await getNextSequence('employee', 'EMP', 5);
 
@@ -174,6 +182,20 @@ export const updateStaff = asyncHandler(async (req, res) => {
   const staff = await Staff.findById(req.params.id);
   if (!staff) {
     throw new ApiError(404, 'Staff member not found');
+  }
+
+  const targetRole = role || staff.role;
+  const targetBranch = branchId !== undefined ? branchId : staff.branchId;
+  if (targetRole === 'authorized_person' && targetBranch) {
+    const authorizedCount = await Staff.countDocuments({
+      _id: { $ne: staff._id },
+      branchId: targetBranch,
+      role: 'authorized_person',
+      status: { $ne: 'inactive' }
+    });
+    if (authorizedCount >= 5) {
+      throw new ApiError(400, 'Maximum 5 Authorized Persons allowed per branch');
+    }
   }
 
   // Build $set update object instead of using save() to avoid

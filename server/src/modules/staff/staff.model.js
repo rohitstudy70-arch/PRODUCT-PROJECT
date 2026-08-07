@@ -70,7 +70,7 @@ const staffSchema = new mongoose.Schema(
     emergencyContact: String,
     role: {
       type: String,
-      enum: ['super_admin', 'branch_admin', 'store_manager', 'security_guard', 'staff'],
+      enum: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person', 'security_guard', 'staff'],
       required: true
     },
     avatar: String,

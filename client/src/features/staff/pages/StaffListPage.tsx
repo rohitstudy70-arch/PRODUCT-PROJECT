@@ -62,7 +62,7 @@ export const StaffListPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'super_admin' | 'branch_admin' | 'store_manager' | 'security_guard' | 'staff'>('staff');
+  const [role, setRole] = useState<'super_admin' | 'branch_admin' | 'store_manager' | 'authorized_person' | 'security_guard' | 'staff'>('staff');
   const [branchId, setBranchId] = useState('');
   const [rfidCard, setRfidCard] = useState('');
   
@@ -268,6 +268,7 @@ export const StaffListPage: React.FC = () => {
       switch(role) {
         case 'staff': return 'Logistics Courier';
         case 'security_guard': return 'Gate Security Officer';
+        case 'authorized_person': return 'Authorized Product Officer';
         case 'store_manager': return 'Branch Manager';
         case 'branch_admin': return 'Branch Administrator';
         case 'super_admin': return 'HQ Administrator';
@@ -1082,6 +1083,7 @@ export const StaffListPage: React.FC = () => {
               >
                 <option value="staff">Delivery Staff / Courier</option>
                 <option value="security_guard">Security Guard Scanner</option>
+                <option value="authorized_person">Authorized Product Officer (Max 5/Branch)</option>
                 <option value="store_manager">Branch Manager</option>
                 <option value="branch_admin">Branch Administrator</option>
                 <option value="super_admin">Organization Administrator</option>

@@ -26,6 +26,7 @@ import api from '../../../config/api';
 import { IMEISearchBar } from '../components/IMEISearchBar';
 import { ProductTransferPanel } from '../components/ProductTransferPanel';
 import { RecentTransfersWidget } from '../components/RecentTransfersWidget';
+import { BranchManagerTransferPanel } from '../components/BranchManagerTransferPanel';
 import io from 'socket.io-client';
 
 interface Stats {
@@ -516,6 +517,11 @@ export const DashboardPage: React.FC = () => {
           />
         </Link>
       </div>
+
+      {/* BRANCH MANAGER CONTROL PANEL */}
+      {(user?.role === 'store_manager' || user?.role === 'branch_admin') && (
+        <BranchManagerTransferPanel />
+      )}
 
       {/* RECENT TRANSFERS WIDGET */}
       <RecentTransfersWidget transfers={transfers} />

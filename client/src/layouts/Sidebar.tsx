@@ -31,13 +31,13 @@ export const Sidebar: React.FC = () => {
   const role = user.role;
 
   const navItems = [
-    { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: ['super_admin', 'branch_admin', 'store_manager', 'security_guard', 'staff'] },
+    { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: LayoutDashboard, roles: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person', 'security_guard', 'staff'] },
     { label: 'Branches', path: ROUTES.BRANCHES, icon: Building2, roles: ['super_admin'] },
     { label: 'Staff Members', path: ROUTES.STAFF, icon: Users, roles: ['super_admin'] },
     { label: 'Staff Activity', path: ROUTES.STAFF_ACTIVITY, icon: Activity, roles: ['super_admin'] },
-    { label: 'Products', path: ROUTES.PRODUCTS, icon: Package, roles: ['super_admin', 'branch_admin', 'store_manager'] },
-    { label: 'Inventory Control', path: ROUTES.INVENTORY, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager'] },
-    { label: 'Transfers', path: ROUTES.TRANSFERS, icon: ArrowRightLeft, roles: ['super_admin', 'branch_admin', 'store_manager', 'staff'] },
+    { label: 'Products', path: ROUTES.PRODUCTS, icon: Package, roles: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person'] },
+    { label: 'Inventory Control', path: ROUTES.INVENTORY, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person'] },
+    { label: 'Transfers', path: ROUTES.TRANSFERS, icon: ArrowRightLeft, roles: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person', 'staff'] },
     { label: 'Security Gate', path: ROUTES.SECURITY, icon: ShieldCheck, roles: ['super_admin', 'branch_admin', 'security_guard'] },
     { label: 'Branch Receiving', path: ROUTES.RECEIVING, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager'] },
     { label: 'Audit Trail', path: ROUTES.AUDIT, icon: ScrollText, roles: ['super_admin'] },

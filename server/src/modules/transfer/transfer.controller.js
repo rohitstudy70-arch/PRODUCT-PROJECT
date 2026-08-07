@@ -21,8 +21,8 @@ import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js'
 export const createTransfer = asyncHandler(async (req, res) => {
   const { fromBranchId, toBranchId, assignedStaffId, productIds, notes } = req.body;
 
-  if (!fromBranchId || !toBranchId || !assignedStaffId || !productIds || productIds.length === 0) {
-    throw new ApiError(400, 'From branch, to branch, assigned staff, and list of products are required');
+  if (!fromBranchId || !toBranchId || !productIds || productIds.length === 0) {
+    throw new ApiError(400, 'From branch, to branch, and list of products are required');
   }
 
   // Generate TRF000001 format ID
@@ -33,7 +33,7 @@ export const createTransfer = asyncHandler(async (req, res) => {
     transferId,
     fromBranchId,
     toBranchId,
-    assignedStaffId,
+    assignedStaffId: assignedStaffId || null,
     status: 'pending',
     notes,
     requestedBy: req.user._id,
@@ -60,17 +60,72 @@ export const createTransfer = asyncHandler(async (req, res) => {
     { status: 'reserved' }
   );
 
-  // Send Notification to Organization
+  // Send Notification to Branch Managers of fromBranchId
+  const branchManagers = await Staff.find({
+    branchId: fromBranchId,
+    role: { $in: ['store_manager', 'branch_admin'] },
+    status: { $ne: 'inactive' }
+  });
+
+  const requesterName = `${req.user.firstName || 'Authorized Person'} ${req.user.lastName || ''}`.trim();
+  if (branchManagers.length > 0) {
+    const notifications = branchManagers.map(bm => ({
+      organizationId: req.user.organizationId,
+      userId: bm._id,
+      type: 'transfer_created',
+      title: 'New Transfer Order Request',
+      message: `Transfer Request ${transferId} created by ${requesterName}. Please assign a Courier Boy.`,
+      link: `/transfers/${transfer._id}`
+    }));
+    await Notification.insertMany(notifications);
+  } else {
+    await Notification.create({
+      organizationId: req.user.organizationId,
+      userId: req.user._id,
+      type: 'transfer_created',
+      title: 'New Transfer Created',
+      message: `Transfer ${transferId} has been created and is pending courier assignment.`,
+      link: `/transfers/${transfer._id}`
+    });
+  }
+
+  res.status(201).json(new ApiResponse(201, 'Transfer created successfully', transfer));
+});
+
+// --- ASSIGN COURIER TO TRANSFER (BRANCH MANAGER) ---
+export const assignCourier = asyncHandler(async (req, res) => {
+  const { assignedStaffId } = req.body;
+  if (!assignedStaffId) {
+    throw new ApiError(400, 'Assigned courier staff ID is required');
+  }
+
+  const transfer = await Transfer.findById(req.params.id);
+  if (!transfer) {
+    throw new ApiError(404, 'Transfer not found');
+  }
+
+  const courier = await Staff.findById(assignedStaffId);
+  if (!courier) {
+    throw new ApiError(404, 'Selected courier staff not found');
+  }
+
+  transfer.assignedStaffId = assignedStaffId;
+  transfer.status = 'approved';
+  transfer.approvedBy = req.user._id;
+  transfer.approvedAt = new Date();
+  await transfer.save();
+
+  // Send Notification to Assigned Courier
   await Notification.create({
-    organizationId: req.user.organizationId,
-    userId: req.user._id,
-    type: 'transfer_created',
-    title: 'New Transfer Created',
-    message: `Transfer ${transferId} has been created and is pending approval.`,
+    organizationId: transfer.organizationId,
+    userId: assignedStaffId,
+    type: 'transfer_approved',
+    title: 'New Dispatch Transfer Assigned',
+    message: `You have been assigned to Transfer ${transfer.transferId} by Branch Manager.`,
     link: `/transfers/${transfer._id}`
   });
 
-  res.status(201).json(new ApiResponse(201, 'Transfer created successfully', transfer));
+  res.status(200).json(new ApiResponse(200, 'Courier assigned successfully to transfer', transfer));
 });
 
 // --- APPROVE TRANSFER ---

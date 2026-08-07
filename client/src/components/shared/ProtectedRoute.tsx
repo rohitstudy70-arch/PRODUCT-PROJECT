@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../config/routes';
 
 interface ProtectedRouteProps {
-  allowedRoles?: ('super_admin' | 'branch_admin' | 'store_manager' | 'security_guard' | 'staff')[];
+  allowedRoles?: ('super_admin' | 'branch_admin' | 'store_manager' | 'authorized_person' | 'security_guard' | 'staff')[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {

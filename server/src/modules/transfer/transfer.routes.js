@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createTransfer,
   approveTransfer,
+  assignCourier,
   getTransfers,
   getTransferById,
   scanItemForDispatch,
@@ -27,8 +28,12 @@ router.get('/:id', getTransferById);
 // Direct IMEI Dashboard Product Assignment & Transfer
 router.post('/assign-imei', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'assign_imei'), assignIMEITransfer);
 
-// Super admin creates and approves transfers
-router.post('/', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'create'), createTransfer);
+// Create transfer (Authorized Person, Branch Admin, Store Manager, Super Admin)
+router.post('/', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('transfer', 'create'), createTransfer);
+
+// Branch Manager assigns courier to pending transfer
+router.patch('/:id/assign-courier', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('transfer', 'assign_courier'), assignCourier);
+
 router.patch('/:id/approve', authorize('super_admin'), auditTrail('transfer', 'approve'), approveTransfer);
 
 // Preparing dispatch (store room scans)
