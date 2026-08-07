@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import { QRScanner } from '../../../components/shared/QRScanner';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, AlertCircle, Eye, Scan } from 'lucide-react';
+import { Plus, AlertCircle, Eye, Scan, UserCheck } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Transfer {
@@ -67,8 +67,40 @@ export const TransferPage: React.FC = () => {
   const [scanInput, setScanInput] = useState('');
   const [showCameraInModal, setShowCameraInModal] = useState(false);
   const [branchesLoading, setBranchesLoading] = useState(false);
+  const [assignmentCouriers, setAssignmentCouriers] = useState<any[]>([]);
+  const [assignmentCourierId, setAssignmentCourierId] = useState('');
+  const [assignmentCouriersLoading, setAssignmentCouriersLoading] = useState(false);
+  const [assigningCourier, setAssigningCourier] = useState(false);
 
   const { user } = useAuthStore();
+
+  const getId = (value: any) => value ? (typeof value === 'object' ? value._id : value) : '';
+
+  const canAssignCourierForTransfer = (transfer?: TransferDetail | null) => {
+    if (!transfer || transfer.status !== 'pending') return false;
+    if (user?.role === 'super_admin') return true;
+    if (user?.role !== 'branch_admin' && user?.role !== 'store_manager') return false;
+
+    const userBranchId = getId(user?.branchId);
+    const sourceBranchId = getId(transfer.fromBranchId);
+    return !!userBranchId && userBranchId === sourceBranchId;
+  };
+
+  const fetchAvailableCouriersForTransfer = async (transferId: string) => {
+    setAssignmentCouriersLoading(true);
+    try {
+      const res = await api.get('/transfers/available-couriers', {
+        params: { transferId }
+      });
+      setAssignmentCouriers(res.data?.data || []);
+    } catch (err: any) {
+      console.error('[TransferPage] Error fetching available couriers:', err?.response?.status, err?.response?.data, err);
+      setAssignmentCouriers([]);
+      toast.error(err.response?.data?.message || 'Failed to load available courier boys');
+    } finally {
+      setAssignmentCouriersLoading(false);
+    }
+  };
 
   const fetchTransfers = async () => {
     setLoading(true);
@@ -268,10 +300,41 @@ export const TransferPage: React.FC = () => {
   const handleViewDetail = async (id: string) => {
     try {
       const response = await api.get(`/transfers/${id}`);
-      setSelectedTransfer(response.data.data);
+      const transferData = response.data.data;
+      setSelectedTransfer(transferData);
+      setAssignmentCourierId('');
+      setAssignmentCouriers([]);
       setDetailModalOpen(true);
+      if (canAssignCourierForTransfer(transferData)) {
+        fetchAvailableCouriersForTransfer(transferData._id);
+      }
     } catch (err: any) {
       toast.error('Failed to retrieve transfer details');
+    }
+  };
+
+  const handleAssignCourier = async () => {
+    if (!selectedTransfer || !assignmentCourierId) {
+      toast.error('Please select an available Courier Boy');
+      return;
+    }
+
+    setAssigningCourier(true);
+    try {
+      await api.patch(`/transfers/${selectedTransfer._id}/assign-courier`, {
+        assignedStaffId: assignmentCourierId
+      });
+      toast.success('Courier assigned successfully');
+
+      const detailRes = await api.get(`/transfers/${selectedTransfer._id}`);
+      setSelectedTransfer(detailRes.data.data);
+      setAssignmentCourierId('');
+      setAssignmentCouriers([]);
+      fetchTransfers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to assign courier');
+    } finally {
+      setAssigningCourier(false);
     }
   };
 
@@ -653,6 +716,47 @@ export const TransferPage: React.FC = () => {
                     ? `${selectedTransfer.assignedStaffId.firstName} ${selectedTransfer.assignedStaffId.lastName} (${selectedTransfer.assignedStaffId.employeeId})`
                     : 'Unassigned'}
                 </p>
+                {canAssignCourierForTransfer(selectedTransfer) && (
+                  <div className="mt-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center space-x-1.5">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>Manager Step: Assign Available Courier Boy</span>
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <select
+                        value={assignmentCourierId}
+                        onChange={(e) => setAssignmentCourierId(e.target.value)}
+                        disabled={assignmentCouriersLoading || assignmentCouriers.length === 0}
+                        className="flex h-9 min-w-0 flex-1 rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-100 cursor-pointer disabled:opacity-60"
+                      >
+                        <option value="">
+                          {assignmentCouriersLoading
+                            ? 'Loading source branch couriers...'
+                            : assignmentCouriers.length === 0
+                              ? 'No available courier boys at source branch'
+                              : 'Select courier boy'}
+                        </option>
+                        {assignmentCouriers.map((c) => (
+                          <option key={c._id} value={c._id}>
+                            {`${c.firstName} ${c.lastName} (${c.employeeId})${c.phone ? ` - ${c.phone}` : ''}`}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAssignCourier}
+                        disabled={assigningCourier || !assignmentCourierId}
+                        className="h-9 shrink-0 bg-amber-600 hover:bg-amber-500 text-white"
+                      >
+                        {assigningCourier ? 'Assigning...' : 'Assign Courier'}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-slate-500">
+                      Only active courier boys currently available at the source branch are shown.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-2 col-span-2 border-t border-slate-850 pt-2 space-y-1.5">
@@ -772,7 +876,7 @@ export const TransferPage: React.FC = () => {
             <div className="flex items-center justify-end space-x-2 pt-4 border-t border-slate-800">
               <Button variant="outline" onClick={() => setDetailModalOpen(false)}>Close</Button>
               
-              {user?.role === 'super_admin' && selectedTransfer.status === 'pending' && (
+              {user?.role === 'super_admin' && selectedTransfer.status === 'pending' && selectedTransfer.assignedStaffId && (
                 <Button onClick={() => handleApprove(selectedTransfer._id)}>Approve Transfer</Button>
               )}
 

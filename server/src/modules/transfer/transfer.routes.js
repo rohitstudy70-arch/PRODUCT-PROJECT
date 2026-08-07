@@ -3,6 +3,7 @@ import {
   createTransfer,
   approveTransfer,
   assignCourier,
+  getAvailableCouriers,
   getTransfers,
   getTransferById,
   scanItemForDispatch,
@@ -22,6 +23,7 @@ router.use(authenticate);
 
 // View transfers lists
 router.get('/', getTransfers);
+router.get('/available-couriers', authorize('super_admin', 'branch_admin', 'store_manager'), getAvailableCouriers);
 router.get('/active-by-staff/:staffQrCode', getActiveTransferByStaff);
 router.get('/:id', getTransferById);
 

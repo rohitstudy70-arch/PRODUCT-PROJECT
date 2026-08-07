@@ -17,6 +17,32 @@ import ApiResponse from '../../utils/ApiResponse.js';
 import asyncHandler from '../../utils/asyncHandler.js';
 import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js';
 
+const idString = (value) => {
+  if (!value) return '';
+  return (value._id || value).toString();
+};
+
+const assertSourceBranchManager = (req, sourceBranchId) => {
+  if (req.user.role === 'super_admin') return;
+
+  const userBranchId = idString(req.user.branchId);
+  if (!userBranchId || userBranchId !== sourceBranchId.toString()) {
+    throw new ApiError(403, 'Only the source branch manager can assign a courier for this transfer');
+  }
+};
+
+const courierIsAvailableAtBranch = (courier, sourceBranchId) => {
+  const sourceId = sourceBranchId.toString();
+  const currentBranchId = idString(courier.currentBranchId);
+  const homeBranchId = idString(courier.branchId);
+
+  if (currentBranchId) {
+    return currentBranchId === sourceId;
+  }
+
+  return homeBranchId === sourceId;
+};
+
 // --- CREATE TRANSFER ---
 export const createTransfer = asyncHandler(async (req, res) => {
   const { fromBranchId, toBranchId, assignedStaffId, productIds, notes } = req.body;
@@ -104,9 +130,24 @@ export const assignCourier = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Transfer not found');
   }
 
+  if (transfer.status !== 'pending') {
+    throw new ApiError(400, 'Courier can only be assigned to pending transfer requests');
+  }
+
+  const sourceBranchId = idString(transfer.fromBranchId);
+  assertSourceBranchManager(req, sourceBranchId);
+
   const courier = await Staff.findById(assignedStaffId);
   if (!courier) {
     throw new ApiError(404, 'Selected courier staff not found');
+  }
+
+  if (courier.role !== 'staff' || courier.status !== 'active') {
+    throw new ApiError(400, 'Selected person is not an active Courier Boy / Delivery Staff');
+  }
+
+  if (!courierIsAvailableAtBranch(courier, sourceBranchId)) {
+    throw new ApiError(400, 'Selected courier is not available at the source branch');
   }
 
   transfer.assignedStaffId = assignedStaffId;
@@ -128,6 +169,49 @@ export const assignCourier = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, 'Courier assigned successfully to transfer', transfer));
 });
 
+// --- AVAILABLE COURIERS FOR SOURCE BRANCH ---
+export const getAvailableCouriers = asyncHandler(async (req, res) => {
+  const { branchId, transferId } = req.query;
+
+  let sourceBranchId = branchId || idString(req.user.branchId);
+  let transfer = null;
+
+  if (transferId) {
+    transfer = await Transfer.findById(transferId);
+    if (!transfer) {
+      throw new ApiError(404, 'Transfer not found');
+    }
+    sourceBranchId = idString(transfer.fromBranchId);
+  }
+
+  if (!sourceBranchId) {
+    throw new ApiError(400, 'Source branch ID is required to fetch available couriers');
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(sourceBranchId)) {
+    throw new ApiError(400, 'Invalid source branch ID');
+  }
+
+  assertSourceBranchManager(req, sourceBranchId);
+
+  const couriers = await Staff.find({
+    organizationId: req.user.organizationId,
+    role: 'staff',
+    status: 'active',
+    $or: [
+      { currentBranchId: sourceBranchId },
+      { branchId: sourceBranchId, currentBranchId: null },
+      { branchId: sourceBranchId, currentBranchId: { $exists: false } }
+    ]
+  })
+    .populate('branchId', 'name code')
+    .populate('currentBranchId', 'name code')
+    .select('employeeId firstName lastName phone dutyStatus status branchId currentBranchId avatar designation rfidCard')
+    .sort({ firstName: 1, lastName: 1 });
+
+  res.status(200).json(new ApiResponse(200, 'Available couriers retrieved successfully', couriers));
+});
+
 // --- APPROVE TRANSFER ---
 export const approveTransfer = asyncHandler(async (req, res) => {
   const transfer = await Transfer.findById(req.params.id);
@@ -137,6 +221,10 @@ export const approveTransfer = asyncHandler(async (req, res) => {
 
   if (transfer.status !== 'pending') {
     throw new ApiError(400, 'Only pending transfers can be approved');
+  }
+
+  if (!transfer.assignedStaffId) {
+    throw new ApiError(400, 'Assign a Courier Boy before approving this transfer');
   }
 
   transfer.status = 'approved';

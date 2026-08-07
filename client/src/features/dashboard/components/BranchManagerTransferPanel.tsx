@@ -8,10 +8,15 @@ import {
   Package, 
   Building2, 
   User, 
-  Truck
+  Truck,
+  Scan,
+  Camera,
+  Search,
+  Check
 } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Badge } from '../../../components/ui/badge';
+import { QRScanner } from '../../../components/shared/QRScanner';
 import { useAuthStore } from '../../../store/authStore';
 import API from '../../../config/api';
 
@@ -37,6 +42,9 @@ interface CourierStaff {
   dutyStatus?: string;
   status: string;
   avatar?: string;
+  qrCode?: string;
+  branchId?: { _id: string; name: string; code: string } | string;
+  currentBranchId?: { _id: string; name: string; code: string } | string;
 }
 
 export const BranchManagerTransferPanel: React.FC = () => {
@@ -51,31 +59,31 @@ export const BranchManagerTransferPanel: React.FC = () => {
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
 
-  const branchId = user?.branchId?._id;
+  // Scanning & Employee Code Search States
+  const [scanInput, setScanInput] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const getId = (value: any) => value ? (typeof value === 'object' ? value._id : value) : '';
+  const branchId = getId(user?.branchId);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch transfers
-      const transferRes = await API.get('/transfers');
+      const transferRes = await API.get('/transfers', { params: { limit: 100, status: 'pending' } });
       const allTransfers: Transfer[] = transferRes.data?.data || transferRes.data || [];
       
       // Filter pending transfers for this branch manager's branch
       const pendingTransfers = allTransfers.filter(t => {
-        const fromId = typeof t.fromBranchId === 'object' ? t.fromBranchId?._id : t.fromBranchId;
+        const fromId = getId(t.fromBranchId);
         return t.status === 'pending' && (!branchId || fromId === branchId);
       });
       setTransfers(pendingTransfers);
 
-      // Fetch staff members in this branch for courier assignment
-      const staffRes = await API.get('/staff', { params: { limit: 100 } });
-      const allStaff: CourierStaff[] = staffRes.data?.data || staffRes.data || [];
-      
-      const branchCouriers = allStaff.filter((s: any) => {
-        const staffBranch = typeof s.branchId === 'object' ? s.branchId?._id : s.branchId;
-        return s.role === 'staff' && (!branchId || staffBranch === branchId) && s.status !== 'inactive';
+      const courierRes = await API.get('/transfers/available-couriers', {
+        params: branchId ? { branchId } : undefined
       });
-      setCouriers(branchCouriers);
+      setCouriers(courierRes.data?.data || courierRes.data || []);
     } catch (err: any) {
       console.error('Error loading branch manager panel data:', err);
     } finally {
@@ -92,14 +100,42 @@ export const BranchManagerTransferPanel: React.FC = () => {
   const handleOpenAssignModal = (transfer: Transfer) => {
     setSelectedTransfer(transfer);
     setSelectedCourierId('');
+    setScanInput('');
+    setSearchQuery('');
+    setShowCamera(false);
     setActionError('');
     setActionSuccess('');
     setAssignModalOpen(true);
   };
 
+  const handleScanCourier = (scannedCode: string) => {
+    const query = scannedCode.trim().toLowerCase();
+    if (!query) return;
+
+    const matched = couriers.find(c => 
+      c.employeeId?.toLowerCase() === query ||
+      c._id === query ||
+      c.phone === query ||
+      c.qrCode === query ||
+      `${c.firstName} ${c.lastName}`.toLowerCase().includes(query) ||
+      c.employeeId?.toLowerCase().includes(query)
+    );
+
+    if (matched) {
+      setSelectedCourierId(matched._id);
+      setActionSuccess(`Matched Courier: ${matched.firstName} ${matched.lastName} (${matched.employeeId})`);
+      setActionError('');
+      setShowCamera(false);
+      setScanInput('');
+    } else {
+      setActionError(`No courier found matching Employee Code / Tag: "${scannedCode}"`);
+      setActionSuccess('');
+    }
+  };
+
   const handleAssignCourier = async () => {
     if (!selectedTransfer || !selectedCourierId) {
-      setActionError('Please select an available Courier Boy.');
+      setActionError('Please scan or select a Courier Boy first.');
       return;
     }
 
@@ -121,6 +157,18 @@ export const BranchManagerTransferPanel: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const selectedCourierObj = couriers.find(c => c._id === selectedCourierId);
+
+  const filteredCouriers = couriers.filter(c => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.employeeId.toLowerCase().includes(q) ||
+      `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
+      c.phone.includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -247,8 +295,8 @@ export const BranchManagerTransferPanel: React.FC = () => {
                       <p className="text-[10px] text-slate-500 font-mono">ID: {c.employeeId}</p>
                     </div>
                   </div>
-                  <Badge className={c.dutyStatus === 'on_duty' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]' : 'bg-slate-800 text-slate-400 text-[10px]'}>
-                    {c.dutyStatus === 'on_duty' ? 'Available' : 'On Standby'}
+                  <Badge className={c.dutyStatus === 'ON_DUTY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]' : 'bg-slate-800 text-slate-400 text-[10px]'}>
+                    {c.dutyStatus === 'ON_DUTY' ? 'On Duty' : 'Available'}
                   </Badge>
                 </div>
               ))
@@ -259,16 +307,16 @@ export const BranchManagerTransferPanel: React.FC = () => {
 
       {/* Assign Courier Modal */}
       {assignModalOpen && selectedTransfer && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center space-x-2">
+                <h3 className="text-base font-bold text-slate-100 flex items-center space-x-2">
                   <UserCheck className="w-5 h-5 text-blue-400" />
-                  <span>Assign Courier Boy</span>
+                  <span>Assign Courier to Transfer Order</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Transfer <strong className="text-blue-400">{selectedTransfer.transferId}</strong> ({selectedTransfer.totalItems} Items)
+                  Transfer Order <strong className="text-blue-400 font-mono">{selectedTransfer.transferId}</strong> ({selectedTransfer.totalItems} Items)
                 </p>
               </div>
               <button 
@@ -293,46 +341,142 @@ export const BranchManagerTransferPanel: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-slate-300 block">
-                Select Available Courier Boy from Branch *
+            {/* Scan Staff ID QR / Type Employee Code Box */}
+            <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-lg space-y-3">
+              <label className="text-xs font-semibold text-blue-300 flex items-center space-x-1.5">
+                <Scan className="w-4 h-4 text-blue-400" />
+                <span>Scan Staff ID Card / Enter Employee Code</span>
               </label>
-              
-              {couriers.length === 0 ? (
-                <p className="text-xs text-rose-400">No couriers available in this branch. Please add staff first.</p>
-              ) : (
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                  {couriers.map((c) => (
-                    <label 
-                      key={c._id}
-                      onClick={() => setSelectedCourierId(c._id)}
-                      className={`p-3 rounded-lg border cursor-pointer flex items-center justify-between transition-all ${
-                        selectedCourierId === c._id 
-                          ? 'bg-blue-600/15 border-blue-500 text-slate-100 shadow-sm' 
-                          : 'bg-slate-950/40 border-slate-800 text-slate-300 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <input 
-                          type="radio" 
-                          name="courierSelect" 
-                          checked={selectedCourierId === c._id}
-                          onChange={() => setSelectedCourierId(c._id)}
-                          className="accent-blue-500"
-                        />
-                        <div>
-                          <p className="text-xs font-bold">{c.firstName} {c.lastName}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">Emp ID: {c.employeeId} • {c.phone}</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-emerald-500/10 text-emerald-400 text-[10px]">
-                        Available
-                      </Badge>
-                    </label>
-                  ))}
+
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (scanInput) handleScanCourier(scanInput);
+                }}
+                className="flex items-center space-x-2"
+              >
+                <input
+                  type="text"
+                  placeholder="Scan Staff ID or type Employee Code (e.g. EMP00074)..."
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-100 focus:outline-none focus:border-blue-500"
+                />
+                <Button 
+                  type="submit"
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-500 text-white text-xs whitespace-nowrap h-9 px-3"
+                >
+                  Match
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowCamera(!showCamera)}
+                  className="h-9 px-3 border-slate-700 text-slate-300 text-xs flex items-center space-x-1"
+                >
+                  <Camera className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{showCamera ? 'Hide Camera' : 'Camera'}</span>
+                </Button>
+              </form>
+
+              {/* Camera Scanner View */}
+              {showCamera && (
+                <div className="pt-2 border-t border-slate-800">
+                  <QRScanner
+                    placeholder="Scan Staff ID QR Tag"
+                    onScanSuccess={(scanned) => handleScanCourier(scanned)}
+                  />
                 </div>
               )}
             </div>
+
+            {/* Selected Courier Summary Card */}
+            {selectedCourierObj ? (
+              <div className="p-3 bg-emerald-950/20 border border-emerald-500/30 rounded-lg flex items-center justify-between animate-in fade-in duration-200">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600/20 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-300 text-sm">
+                    {selectedCourierObj.firstName.charAt(0)}{selectedCourierObj.lastName?.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold text-slate-100">{selectedCourierObj.firstName} {selectedCourierObj.lastName}</span>
+                      <Badge className="bg-emerald-500/20 text-emerald-300 text-[10px] py-0">
+                        <Check className="w-3 h-3 mr-0.5" /> Verified Courier
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                      Emp ID: <strong className="text-emerald-400">{selectedCourierObj.employeeId}</strong> • Phone: {selectedCourierObj.phone}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={() => setSelectedCourierId('')}
+                  className="text-xs text-slate-400 hover:text-slate-200 h-7 px-2"
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              /* Courier Search & Selection List */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Or Select Courier Boy from Branch Roster *
+                  </label>
+                  <div className="relative w-48">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Filter by name / code..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-8 pl-8 pr-2 w-full rounded-md border border-slate-800 bg-slate-950 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {filteredCouriers.length === 0 ? (
+                  <p className="text-xs text-amber-400 py-3 text-center bg-slate-950/40 rounded-lg border border-slate-800">
+                    No matching couriers found in branch roster.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                    {filteredCouriers.map((c) => (
+                      <div 
+                        key={c._id}
+                        onClick={() => setSelectedCourierId(c._id)}
+                        className={`p-2.5 rounded-lg border cursor-pointer flex items-center justify-between transition-all ${
+                          selectedCourierId === c._id 
+                            ? 'bg-blue-600/15 border-blue-500 text-slate-100 shadow-sm' 
+                            : 'bg-slate-950/40 border-slate-800/80 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input 
+                            type="radio" 
+                            name="courierSelect" 
+                            checked={selectedCourierId === c._id}
+                            onChange={() => setSelectedCourierId(c._id)}
+                            className="accent-blue-500"
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-slate-200">{c.firstName} {c.lastName}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">Emp ID: {c.employeeId} • {c.phone}</p>
+                          </div>
+                        </div>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 text-[10px]">
+                          Available
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
               <Button 
