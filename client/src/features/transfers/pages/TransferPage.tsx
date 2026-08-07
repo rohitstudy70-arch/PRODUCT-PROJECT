@@ -122,23 +122,36 @@ export const TransferPage: React.FC = () => {
 
   const fetchStaffAndProducts = async (targetBranchId?: string) => {
     setProductsLoading(true);
-    try {
-      // Only fetch courier/delivery staff (role=staff), not admins or security guards
-      const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
-      setStaffList(stRes.data?.data || []);
+    const branchParam = targetBranchId || fromBranchId;
 
-      const branchParam = targetBranchId || fromBranchId;
-      const params: any = { limit: 500 };
-      if (branchParam) {
-        params.branchId = branchParam;
+    // Staff lookup is optional. Authorized persons are allowed to create a transfer
+    // request, but staff listing is restricted, so a 403 here must not block device loading.
+    const canFetchStaff = user?.role === 'super_admin' || user?.role === 'branch_admin';
+    if (canFetchStaff) {
+      try {
+        const stRes = await api.get('/staff', { params: { limit: 100, role: 'staff' } });
+        setStaffList(stRes.data?.data || []);
+      } catch (err: any) {
+        console.error('[TransferPage] Error fetching staff:', err?.response?.status, err?.response?.data, err);
+        setStaffList([]);
       }
-      console.log('[TransferPage] fetchStaffAndProducts => API params:', JSON.stringify(params), '| user.role:', user?.role, '| user.branchId:', user?.branchId);
+    } else {
+      setStaffList([]);
+    }
+
+    try {
+      const params: any = { limit: 500, status: 'available' };
+      if (branchParam) params.branchId = branchParam;
+
+      console.log('[TransferPage] fetchStaffAndProducts => Product API params:', JSON.stringify(params), '| user.role:', user?.role, '| user.branchId:', user?.branchId);
       const prRes = await api.get('/products', { params });
       const fetchedProducts = prRes.data?.data || [];
       console.log('[TransferPage] fetchStaffAndProducts => Products received:', fetchedProducts.length, fetchedProducts.map((p: any) => ({ _id: p._id, name: p.name, productId: p.productId, status: p.status, branchId: p.currentBranchId?._id || p.currentBranchId })));
       setProducts(fetchedProducts);
     } catch (err: any) {
-      console.error('[TransferPage] Error fetching staff/products:', err?.response?.status, err?.response?.data, err);
+      console.error('[TransferPage] Error fetching products:', err?.response?.status, err?.response?.data, err);
+      setProducts([]);
+      toast.error('Failed to load available devices at source branch');
     } finally {
       setProductsLoading(false);
     }
@@ -414,7 +427,11 @@ export const TransferPage: React.FC = () => {
               ) : (
                 <select
                   value={fromBranchId}
-                  onChange={(e) => setFromBranchId(e.target.value)}
+                  onChange={(e) => {
+                    setFromBranchId(e.target.value);
+                    setSelectedProductIds([]);
+                    setScanInput('');
+                  }}
                   disabled={user?.role === 'authorized_person'}
                   className={`flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer ${user?.role === 'authorized_person' ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
@@ -507,7 +524,7 @@ export const TransferPage: React.FC = () => {
                       ? (typeof p.currentBranchId === 'object' ? p.currentBranchId.name : 'Branch')
                       : 'Central Main Stock';
                     return (
-                      <option key={p._id} value={p.productId}>
+                      <option key={p._id} value={p._id}>
                         {`${p.name} (${p.productId}${p.serialNumber ? ` | SN: ${p.serialNumber}` : ''}${p.imei ? ` | IMEI: ${p.imei}` : ''}) - [${locName}]`}
                       </option>
                     );
