@@ -129,10 +129,13 @@ export const TransferPage: React.FC = () => {
       if (branchParam) {
         params.branchId = branchParam;
       }
+      console.log('[TransferPage] fetchStaffAndProducts => API params:', JSON.stringify(params), '| user.role:', user?.role, '| user.branchId:', user?.branchId);
       const prRes = await api.get('/products', { params });
-      setProducts(prRes.data?.data || []);
-    } catch (err) {
-      console.error('[TransferPage] Error fetching staff/products:', err);
+      const fetchedProducts = prRes.data?.data || [];
+      console.log('[TransferPage] fetchStaffAndProducts => Products received:', fetchedProducts.length, fetchedProducts.map((p: any) => ({ _id: p._id, name: p.name, productId: p.productId, status: p.status, branchId: p.currentBranchId?._id || p.currentBranchId })));
+      setProducts(fetchedProducts);
+    } catch (err: any) {
+      console.error('[TransferPage] Error fetching staff/products:', err?.response?.status, err?.response?.data, err);
     }
   };
 
@@ -400,7 +403,8 @@ export const TransferPage: React.FC = () => {
                 <select
                   value={fromBranchId}
                   onChange={(e) => setFromBranchId(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer"
+                  disabled={user?.role === 'authorized_person'}
+                  className={`flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer ${user?.role === 'authorized_person' ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <option value="">Select source branch</option>
                   {branches.map(b => (

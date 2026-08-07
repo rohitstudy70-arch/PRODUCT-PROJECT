@@ -141,6 +141,8 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   if (status) query.status = status;
   if (category) query.category = category;
 
+  console.log('[getAllProducts] user.role:', req.user.role, '| user.branchId:', req.user.branchId, '| query branchId param:', branchId);
+
   if (req.user.role === 'staff') {
     query.currentHolderId = req.user._id;
   } else if (branchId) {
@@ -148,6 +150,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
       query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];
     } else {
       const targetBranch = await Branch.findById(branchId);
+      console.log('[getAllProducts] targetBranch:', targetBranch?.name, targetBranch?.code);
       if (targetBranch && (targetBranch.code?.startsWith('PR') || targetBranch.name?.toLowerCase().includes('purnea') || targetBranch.name?.toLowerCase().includes('central'))) {
         const purneaBranches = await Branch.find({
           $or: [
@@ -161,21 +164,32 @@ export const getAllProducts = asyncHandler(async (req, res) => {
           { currentBranchId: null },
           { currentBranchId: { $exists: false } }
         ];
+        console.log('[getAllProducts] PURNEA ALIAS => purneaIds:', purneaIds);
       } else {
         query.currentBranchId = branchId;
+        console.log('[getAllProducts] EXACT BRANCH => branchId:', branchId);
       }
     }
   } else if (req.user.role === 'authorized_person' && req.user.branchId) {
     query.currentBranchId = req.user.branchId;
+    console.log('[getAllProducts] AUTHORIZED_PERSON fallback => branchId:', req.user.branchId);
   }
 
   if (search) {
-    query.$or = [
+    // Use $and to avoid overwriting $or from branch filter
+    const searchConditions = [
       { name: { $regex: search, $options: 'i' } },
       { productId: { $regex: search, $options: 'i' } },
       { serialNumber: { $regex: search, $options: 'i' } },
       { imei: { $regex: search, $options: 'i' } }
     ];
+    if (query.$or) {
+      // Branch filter already set $or, combine with $and
+      query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+      delete query.$or;
+    } else {
+      query.$or = searchConditions;
+    }
   }
 
   const skip = (page - 1) * limit;
@@ -186,6 +200,8 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit, 10));
+
+  console.log('[getAllProducts] Final query:', JSON.stringify(query), '| total:', total, '| returned:', products.length);
 
   res.status(200).json(
     new ApiResponse(
