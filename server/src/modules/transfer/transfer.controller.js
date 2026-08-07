@@ -206,8 +206,8 @@ export const assignCourier = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Transfer not found');
   }
 
-  if (transfer.status !== 'pending') {
-    throw new ApiError(400, 'Courier can only be assigned to pending transfer requests');
+  if (['dispatched', 'in_transit', 'arrived', 'received', 'cancelled', 'rejected'].includes(transfer.status)) {
+    throw new ApiError(400, 'Courier cannot be assigned to an already dispatched or completed transfer order');
   }
 
   const sourceBranchId = idString(transfer.fromBranchId);

@@ -79,7 +79,7 @@ export const BranchManagerTransferPanel: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const transferRes = await API.get('/transfers', { params: { limit: 100, status: 'pending' } });
+      const transferRes = await API.get('/transfers', { params: { limit: 100 } });
       const allTransfers: Transfer[] = transferRes.data?.data || transferRes.data || [];
       
       const isPurneaBranch = (name?: string, code?: string) => {
@@ -92,9 +92,13 @@ export const BranchManagerTransferPanel: React.FC = () => {
       const userBrCode = typeof user?.branchId === 'object' ? user?.branchId?.code : '';
       const isUserBranchPurnea = isPurneaBranch(userBrName, userBrCode);
 
-      // Filter pending transfers for this branch manager's branch
+      // Filter transfers needing courier assignment for this branch manager's branch
       const pendingTransfers = allTransfers.filter(t => {
-        if (t.status !== 'pending') return false;
+        if (['dispatched', 'in_transit', 'arrived', 'received', 'cancelled', 'rejected'].includes(t.status)) return false;
+
+        const isAwaitingCourier = !t.assignedStaffId || t.status === 'pending';
+        if (!isAwaitingCourier) return false;
+
         if (!branchId || user?.role === 'super_admin') return true;
 
         const fromId = getId(t.fromBranchId);

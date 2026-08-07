@@ -77,12 +77,28 @@ export const TransferPage: React.FC = () => {
   const getId = (value: any) => value ? (typeof value === 'object' ? value._id : value) : '';
 
   const canAssignCourierForTransfer = (transfer?: TransferDetail | null) => {
-    if (!transfer || transfer.status !== 'pending') return false;
+    if (!transfer) return false;
+    if (transfer.assignedStaffId) return false; // Already assigned
+    if (['dispatched', 'in_transit', 'arrived', 'received', 'cancelled', 'rejected'].includes(transfer.status)) return false;
     if (user?.role === 'super_admin') return true;
     if (user?.role !== 'branch_admin' && user?.role !== 'store_manager') return false;
 
     const userBranchId = getId(user?.branchId);
     const sourceBranchId = getId(transfer.fromBranchId);
+
+    const isPurneaBranch = (name?: string, code?: string) => {
+      if (!name && !code) return false;
+      return (code && code.toUpperCase().startsWith('PR')) || 
+             (name && (name.toLowerCase().includes('purnea') || name.toLowerCase().includes('central')));
+    };
+    const userBrName = typeof user?.branchId === 'object' ? user?.branchId?.name : '';
+    const userBrCode = typeof user?.branchId === 'object' ? user?.branchId?.code : '';
+    if (isPurneaBranch(userBrName, userBrCode)) {
+      const fromName = typeof transfer.fromBranchId === 'object' ? transfer.fromBranchId?.name : '';
+      const fromCode = typeof transfer.fromBranchId === 'object' ? (transfer.fromBranchId as any)?.code : '';
+      return isPurneaBranch(fromName, fromCode);
+    }
+
     return !!userBranchId && userBranchId === sourceBranchId;
   };
 
