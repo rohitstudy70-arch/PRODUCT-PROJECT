@@ -82,10 +82,31 @@ export const BranchManagerTransferPanel: React.FC = () => {
       const transferRes = await API.get('/transfers', { params: { limit: 100, status: 'pending' } });
       const allTransfers: Transfer[] = transferRes.data?.data || transferRes.data || [];
       
+      const isPurneaBranch = (name?: string, code?: string) => {
+        if (!name && !code) return false;
+        return (code && code.toUpperCase().startsWith('PR')) || 
+               (name && (name.toLowerCase().includes('purnea') || name.toLowerCase().includes('central')));
+      };
+
+      const userBrName = typeof user?.branchId === 'object' ? user?.branchId?.name : '';
+      const userBrCode = typeof user?.branchId === 'object' ? user?.branchId?.code : '';
+      const isUserBranchPurnea = isPurneaBranch(userBrName, userBrCode);
+
       // Filter pending transfers for this branch manager's branch
       const pendingTransfers = allTransfers.filter(t => {
+        if (t.status !== 'pending') return false;
+        if (!branchId || user?.role === 'super_admin') return true;
+
         const fromId = getId(t.fromBranchId);
-        return t.status === 'pending' && (!branchId || fromId === branchId);
+        if (fromId === branchId) return true;
+
+        if (isUserBranchPurnea) {
+          const fromName = typeof t.fromBranchId === 'object' ? t.fromBranchId?.name : '';
+          const fromCode = typeof t.fromBranchId === 'object' ? t.fromBranchId?.code : '';
+          return isPurneaBranch(fromName, fromCode);
+        }
+
+        return false;
       });
       setTransfers(pendingTransfers);
 
