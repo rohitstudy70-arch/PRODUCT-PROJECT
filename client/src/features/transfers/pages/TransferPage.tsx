@@ -192,8 +192,8 @@ export const TransferPage: React.FC = () => {
       selectedBranch?.name.toLowerCase().includes('central');
 
     const matchedProduct = products.find(p => {
-      const isAvailable = !p.status || p.status === 'available';
-      const matchesCode = p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p._id === scannedCode;
+      const isAvailable = !['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status);
+      const matchesCode = p.qrCode === scannedCode || p.serialNumber === scannedCode || p.productId === scannedCode || p._id === scannedCode || p.imei === scannedCode;
       
       if (!isAvailable || !matchesCode) return false;
 
@@ -204,10 +204,9 @@ export const TransferPage: React.FC = () => {
         const pBranchCode = typeof p.currentBranchId === 'object' ? p.currentBranchId.code : '';
         const pBranchName = typeof p.currentBranchId === 'object' ? p.currentBranchId.name : '';
         
-        if (pBranchId === fromBranchId || pBranchCode === 'PRN' || pBranchName.toLowerCase().includes('purnea') || pBranchName.toLowerCase().includes('central')) {
+        if (pBranchId === fromBranchId || pBranchCode?.startsWith('PR') || pBranchName?.toLowerCase().includes('purnea') || pBranchName?.toLowerCase().includes('central')) {
           return true;
         }
-        // Allow central office to transfer any available device
         return true;
       }
 
@@ -494,9 +493,11 @@ export const TransferPage: React.FC = () => {
                 className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus-visible:ring-indigo-500 cursor-pointer"
               >
                 <option value="">Select product to add...</option>
-                {products
-                  .filter(p => {
-                    if (p.status && p.status !== 'available') return false;
+                {(() => {
+                  const availableProducts = products.filter(p => {
+                    if (['in_transit', 'dispatched', 'received', 'scrapped', 'missing'].includes(p.status)) {
+                      return false;
+                    }
                     if (!fromBranchId) return true;
 
                     const selectedBranch = branches.find(b => b._id === fromBranchId);
@@ -521,18 +522,25 @@ export const TransferPage: React.FC = () => {
                     }
 
                     return false;
-                  })
-                  .map(p => {
+                  });
+
+                  if (availableProducts.length === 0) {
+                    return (
+                      <option value="" disabled>No available devices found at selected branch</option>
+                    );
+                  }
+
+                  return availableProducts.map(p => {
                     const locName = p.currentBranchId
                       ? (typeof p.currentBranchId === 'object' ? p.currentBranchId.name : 'Branch')
                       : 'Central Main Stock';
                     return (
                       <option key={p._id} value={p.productId}>
-                        {`${p.name} (${p.productId} | SN: ${p.serialNumber || 'N/A'}) - [${locName}]`}
+                        {`${p.name} (${p.productId}${p.serialNumber ? ` | SN: ${p.serialNumber}` : ''}${p.imei ? ` | IMEI: ${p.imei}` : ''}) - [${locName}]`}
                       </option>
                     );
-                  })
-                }
+                  });
+                })()}
               </select>
             </div>
 
