@@ -48,8 +48,10 @@ export const getProductCategories = asyncHandler(async (req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
   let { name, categoryId, serialNumber, imei, model, batch, vendor, purchaseDate, warranty, currentBranchId, notes, rackNumber } = req.body;
 
-  // Auto-set branch for authorized_person / store_manager if not provided
-  if (!currentBranchId && req.user.branchId) {
+  // Auto-set & force branch for authorized_person
+  if (req.user.role === 'authorized_person' && req.user.branchId) {
+    currentBranchId = req.user.branchId;
+  } else if (!currentBranchId && req.user.branchId) {
     currentBranchId = req.user.branchId;
   }
 
@@ -141,6 +143,8 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   if (req.user.role === 'staff') {
     query.currentHolderId = req.user._id;
+  } else if (req.user.role === 'authorized_person' && req.user.branchId) {
+    query.currentBranchId = req.user.branchId;
   } else if (branchId) {
     if (branchId === 'null' || branchId === 'CENTRAL') {
       query.$or = [{ currentBranchId: null }, { currentBranchId: { $exists: false } }];

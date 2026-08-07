@@ -400,11 +400,14 @@ export const ProductListPage: React.FC = () => {
               </select>
             </div>
             <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-400">Initial Location (Branch) *</label>
+              <label className="text-xs font-semibold text-slate-400">
+                Initial Location (Branch) * {user?.role === 'authorized_person' && <span className="text-amber-400 text-[10px] ml-1 font-normal">(🔒 Locked to your branch)</span>}
+              </label>
               <select
                 value={currentBranchId}
                 onChange={(e) => setCurrentBranchId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                disabled={user?.role === 'authorized_person'}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 <option value="" disabled>Select Branch</option>
                 {branches.map((b) => (
