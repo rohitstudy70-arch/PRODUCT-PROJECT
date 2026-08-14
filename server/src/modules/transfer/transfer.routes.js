@@ -24,32 +24,32 @@ router.use(authenticate);
 
 // View transfers lists
 router.get('/', getTransfers);
-router.get('/available-couriers', authorize('super_admin', 'branch_admin', 'store_manager'), getAvailableCouriers);
+router.get('/available-couriers', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager'), getAvailableCouriers);
 router.get('/active-by-staff/:staffQrCode', getActiveTransferByStaff);
 router.get('/:id', getTransferById);
 
 // Direct IMEI Dashboard Product Assignment & Transfer
-router.post('/assign-imei', authorize('super_admin', 'branch_admin'), auditTrail('transfer', 'assign_imei'), assignIMEITransfer);
+router.post('/assign-imei', authorize('super_admin', 'branch_admin', 'warehouse_manager'), auditTrail('transfer', 'assign_imei'), assignIMEITransfer);
 
-// Create transfer (Authorized Person, Branch Admin, Store Manager, Super Admin)
-router.post('/', authorize('super_admin', 'branch_admin', 'store_manager', 'authorized_person'), auditTrail('transfer', 'create'), createTransfer);
+// Create transfer (Authorized Person, Branch Admin, Store Manager, Warehouse Manager, Super Admin)
+router.post('/', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager', 'authorized_person'), auditTrail('transfer', 'create'), createTransfer);
 
 // Branch Manager sends OTP to Courier Boy & assigns courier
-router.post('/:id/send-courier-otp', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('transfer', 'send_courier_otp'), sendCourierOtp);
-router.patch('/:id/assign-courier', authorize('super_admin', 'branch_admin', 'store_manager'), auditTrail('transfer', 'assign_courier'), assignCourier);
+router.post('/:id/send-courier-otp', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager'), auditTrail('transfer', 'send_courier_otp'), sendCourierOtp);
+router.patch('/:id/assign-courier', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager'), auditTrail('transfer', 'assign_courier'), assignCourier);
 
-router.patch('/:id/approve', authorize('super_admin'), auditTrail('transfer', 'approve'), approveTransfer);
+router.patch('/:id/approve', authorize('super_admin', 'warehouse_manager'), auditTrail('transfer', 'approve'), approveTransfer);
 
 // Preparing dispatch (store room scans)
-router.post('/dispatch-prepare', authorize('super_admin', 'branch_admin', 'store_manager', 'staff'), scanItemForDispatch);
+router.post('/dispatch-prepare', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager', 'staff'), scanItemForDispatch);
 
 // Security scan exit gate (check-out)
 router.post('/gate-exit', authorize('super_admin', 'branch_admin', 'security_guard'), gateExitVerification);
 
 // Security scan entry gate + receive goods (check-in)
-router.post('/gate-entry', authorize('super_admin', 'branch_admin'), gateEntryReceive);
+router.post('/gate-entry', authorize('super_admin', 'branch_admin', 'warehouse_manager'), gateEntryReceive);
 
 // Simple branch arrival confirmation (ditto mockup)
-router.post('/confirm-arrival', authorize('super_admin', 'branch_admin', 'store_manager'), confirmArrivalByStaff);
+router.post('/confirm-arrival', authorize('super_admin', 'branch_admin', 'store_manager', 'warehouse_manager'), confirmArrivalByStaff);
 
 export default router;

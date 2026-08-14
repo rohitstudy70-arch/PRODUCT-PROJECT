@@ -324,7 +324,7 @@ export const ProductListPage: React.FC = () => {
             <span>View</span>
           </Button>
         ) : (
-          (user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'authorized_person') ? (
+          (user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'warehouse_manager') ? (
             <Button variant="outline" size="sm" onClick={() => handleGenerateQR(item._id)} className="h-7 text-xs border-indigo-500/30 text-indigo-400">
               Generate
             </Button>
@@ -336,12 +336,12 @@ export const ProductListPage: React.FC = () => {
       header: 'Actions',
       accessorKey: 'actions',
       render: (item) => (
-        (user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'authorized_person') ? (
+        (user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'warehouse_manager') ? (
           <div className="flex items-center space-x-2">
             <Button variant="outline" size="sm" onClick={() => handleOpenEditModal(item)} className="h-8 w-8 p-0 text-amber-400 hover:text-amber-300">
               <Edit className="h-4 w-4" />
             </Button>
-            {user?.role === 'super_admin' && (
+            {(user?.role === 'super_admin' || user?.role === 'warehouse_manager') && (
               <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
                 <Trash className="h-4 w-4" />
               </Button>
@@ -357,7 +357,7 @@ export const ProductListPage: React.FC = () => {
       <Toaster position="top-right" theme="dark" closeButton />
 
       <PageHeader title="Product Master Catalog" subtitle="Register trackable hardware and assign security tags">
-        {(user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'authorized_person') && (
+        {(user?.role === 'super_admin' || user?.role === 'branch_admin' || user?.role === 'store_manager' || user?.role === 'warehouse_manager') && (
           <Button onClick={handleOpenCreateModal} className="flex items-center space-x-1">
             <Plus className="h-4 w-4" />
             <span>Add Product</span>

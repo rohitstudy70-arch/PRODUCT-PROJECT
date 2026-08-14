@@ -51,9 +51,12 @@ export const App: React.FC = () => {
               <Route path={ROUTES.TRACKING_REPORTS} element={<TrackingReportsPage />} />
             </Route>
 
-            {/* General Logged in Access (internally scoped checks) */}
-            <Route path={ROUTES.PRODUCTS} element={<ProductListPage />} />
-            <Route path={ROUTES.INVENTORY} element={<InventoryPage />} />
+            {/* Warehouse & Inventory Management Access */}
+            <Route element={<ProtectedRoute allowedRoles={['super_admin', 'branch_admin', 'store_manager', 'warehouse_manager']} />}>
+              <Route path={ROUTES.PRODUCTS} element={<ProductListPage />} />
+              <Route path={ROUTES.INVENTORY} element={<InventoryPage />} />
+            </Route>
+            
             <Route path={ROUTES.TRANSFERS} element={<TransferPage />} />
             <Route path={ROUTES.RECEIVING} element={<BranchReceivingPage />} />
 
