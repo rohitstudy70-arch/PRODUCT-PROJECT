@@ -6,7 +6,7 @@ import asyncHandler from '../../utils/asyncHandler.js';
 import { generatePaginationMeta } from '../../utils/helpers.js';
 
 export const getInventory = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 100, search = '', status, branchId } = req.query;
+  const { page = 1, limit = 100, search = '', status, branchId, rackNumber } = req.query;
 
   const query = {};
 
@@ -20,19 +20,26 @@ export const getInventory = asyncHandler(async (req, res) => {
 
   const skip = (page - 1) * limit;
 
-  // Find products matching the search query
-  let productIds = [];
-  if (search) {
-    // We would fetch matching product IDs
-    const products = await mongoose.model('Product').find({
-      $or: [
+  // Find products matching the search query or rack filter
+  if (search || rackNumber) {
+    const productSearchConditions = [];
+    if (search) {
+      productSearchConditions.push(
         { name: { $regex: search, $options: 'i' } },
         { productId: { $regex: search, $options: 'i' } },
         { serialNumber: { $regex: search, $options: 'i' } },
-        { imei: { $regex: search, $options: 'i' } }
-      ]
+        { imei: { $regex: search, $options: 'i' } },
+        { rackNumber: { $regex: search, $options: 'i' } }
+      );
+    }
+    if (rackNumber) {
+      productSearchConditions.push({ rackNumber: { $regex: rackNumber, $options: 'i' } });
+    }
+
+    const products = await mongoose.model('Product').find({
+      $or: productSearchConditions
     }).select('_id');
-    productIds = products.map(p => p._id);
+    const productIds = products.map(p => p._id);
     query.productId = { $in: productIds };
   }
 
