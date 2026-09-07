@@ -8,7 +8,7 @@ import { Badge } from '../../../components/ui/badge';
 import QRCodeSVG from 'react-qr-code';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, Trash, QrCode, Edit, Printer, CreditCard, Sparkles } from 'lucide-react';
+import { Plus, Trash, QrCode, Edit, Printer, CreditCard, Sparkles, Eye, UserCheck, MapPin } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Staff {
@@ -28,9 +28,19 @@ interface Staff {
   rfidCard?: string;
   status: string;
   designation?: string;
+  fatherName?: string;
+  alternatePhone?: string;
+  aadharNumber?: string;
+  panNumber?: string;
   drivingLicense?: string;
   drivingLicenseFront?: string;
   drivingLicenseBack?: string;
+  addressDetails?: {
+    street?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
+  };
   createdAt?: string;
   avatar?: string;
 }
@@ -52,6 +62,7 @@ export const StaffListPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [quickRfidModalOpen, setQuickRfidModalOpen] = useState(false);
+  const [profileViewModalOpen, setProfileViewModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [quickRfidValue, setQuickRfidValue] = useState('');
@@ -837,18 +848,32 @@ export const StaffListPage: React.FC = () => {
       header: 'Actions',
       accessorKey: 'actions',
       render: (item) => (
-        (user?.role === 'super_admin' || user?.role === 'branch_admin') ? (
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => handleEditStaff(item)} className="h-8 w-8 p-0 text-indigo-400 hover:text-indigo-300" title="Edit Full Staff Profile">
-              <Edit className="h-4 w-4" />
-            </Button>
-            {user?.role === 'super_admin' && (
-              <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300" title="Delete Staff">
-                <Trash className="h-4 w-4" />
+        <div className="flex items-center space-x-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedStaff(item);
+              setProfileViewModalOpen(true);
+            }}
+            className="h-8 w-8 p-0 text-cyan-400 hover:text-cyan-300 border-cyan-500/30 bg-cyan-950/20"
+            title="View Full Staff Verification Profile"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          {(user?.role === 'super_admin' || user?.role === 'branch_admin') && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => handleEditStaff(item)} className="h-8 w-8 p-0 text-indigo-400 hover:text-indigo-300" title="Edit Full Staff Profile">
+                <Edit className="h-4 w-4" />
               </Button>
-            )}
-          </div>
-        ) : <span className="text-xs text-slate-500">None</span>
+              {user?.role === 'super_admin' && (
+                <Button variant="outline" size="sm" onClick={() => handleDelete(item._id)} className="h-8 w-8 p-0 text-red-400 hover:text-red-300" title="Delete Staff">
+                  <Trash className="h-4 w-4" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       )
     }
   ];
@@ -907,11 +932,11 @@ export const StaffListPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Courier Verification Profile Fields matching screenshot */}
+          {/* Staff Verification Profile Fields matching screenshot */}
           <div className="border border-indigo-500/20 bg-slate-950/60 rounded-xl p-3.5 space-y-3">
             <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
               <span>👤</span>
-              <span>Courier Verification Profile Details</span>
+              <span>{role === 'staff' ? 'Courier Verification Profile Details' : 'Staff Profile & Verification Details'}</span>
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1283,6 +1308,141 @@ export const StaffListPage: React.FC = () => {
               </Button>
             </div>
           </form>
+        )}
+      </Dialog>
+
+      {/* Staff Verification Profile Details Modal */}
+      <Dialog
+        isOpen={profileViewModalOpen}
+        onClose={() => setProfileViewModalOpen(false)}
+        title="Staff Verification & Identity Details"
+      >
+        {selectedStaff && (
+          <div className="space-y-4 pt-1 text-slate-200">
+            {/* Header Identity Card */}
+            <div className="flex items-center space-x-3.5 p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="h-16 w-14 rounded-lg bg-indigo-950/80 border border-indigo-500/30 flex items-center justify-center overflow-hidden shrink-0">
+                {selectedStaff.avatar ? (
+                  <img src={selectedStaff.avatar} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="font-bold text-indigo-400 text-lg uppercase">
+                    {selectedStaff.firstName[0]}{selectedStaff.lastName[0]}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-extrabold text-base text-slate-100 truncate">
+                    {selectedStaff.firstName} {selectedStaff.lastName}
+                  </h3>
+                  <Badge variant="outline" className="uppercase text-[9px] border-indigo-500/40 text-indigo-300 shrink-0">
+                    {selectedStaff.role.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <p className="text-xs font-mono text-amber-400 mt-0.5 font-bold">Emp ID: {selectedStaff.employeeId}</p>
+                <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                  📍 {selectedStaff.branchId ? `${selectedStaff.branchId.name}` : 'Central Head Office'}
+                </p>
+              </div>
+            </div>
+
+            {/* Verification Fields Grid */}
+            <div className="border border-slate-800 bg-slate-900/60 rounded-xl p-3.5 space-y-3">
+              <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5 border-b border-slate-800 pb-2">
+                <UserCheck className="h-4 w-4 text-emerald-400" />
+                <span>Verification Profile Details</span>
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Father's Name (S/O)</span>
+                  <p className="font-bold text-slate-100 mt-0.5">{selectedStaff.fatherName || 'Not Provided'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Alternate Contact No</span>
+                  <p className="font-mono text-slate-200 mt-0.5">{selectedStaff.alternatePhone || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Primary Mobile</span>
+                  <p className="font-mono text-slate-200 mt-0.5">{selectedStaff.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Email Address</span>
+                  <p className="font-mono text-slate-200 mt-0.5 truncate">{selectedStaff.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5 text-xs pt-2 border-t border-slate-800/60">
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-850">
+                  <span className="text-[9px] text-emerald-400 uppercase font-bold block">Aadhar Card</span>
+                  <p className="font-mono text-[11px] text-slate-100 font-bold mt-0.5">{selectedStaff.aadharNumber || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-850">
+                  <span className="text-[9px] text-indigo-400 uppercase font-bold block">PAN Card</span>
+                  <p className="font-mono text-[11px] text-slate-100 font-bold mt-0.5">{selectedStaff.panNumber || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-850">
+                  <span className="text-[9px] text-cyan-400 uppercase font-bold block">DL Number</span>
+                  <p className="font-mono text-[11px] text-slate-100 font-bold mt-0.5">{selectedStaff.drivingLicense || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* DL Photos Verification Display */}
+              {(selectedStaff.drivingLicenseFront || selectedStaff.drivingLicenseBack) && (
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider block">
+                    🚗 Driving Licence Verification Photos
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedStaff.drivingLicenseFront && (
+                      <div>
+                        <span className="text-[9px] text-slate-400 block mb-1">DL Front Side</span>
+                        <img src={selectedStaff.drivingLicenseFront} alt="DL Front" className="h-28 w-full object-cover rounded-lg border border-slate-700 bg-slate-950" />
+                      </div>
+                    )}
+                    {selectedStaff.drivingLicenseBack && (
+                      <div>
+                        <span className="text-[9px] text-slate-400 block mb-1">DL Back Side</span>
+                        <img src={selectedStaff.drivingLicenseBack} alt="DL Back" className="h-28 w-full object-cover rounded-lg border border-slate-700 bg-slate-950" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Address & Identifiers */}
+            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold flex items-center space-x-1">
+                  <MapPin className="h-3 w-3 text-indigo-400" />
+                  <span>Address Details</span>
+                </span>
+                <p className="text-slate-200 mt-1">
+                  {selectedStaff.addressDetails?.street || 'N/A'}
+                  {selectedStaff.addressDetails?.district ? `, ${selectedStaff.addressDetails.district}` : ''}
+                  {selectedStaff.addressDetails?.state ? `, ${selectedStaff.addressDetails.state}` : ''}
+                  {selectedStaff.addressDetails?.pincode ? ` - ${selectedStaff.addressDetails.pincode}` : ''}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-semibold flex items-center space-x-1">
+                  <CreditCard className="h-3 w-3 text-amber-400" />
+                  <span>Security Smart Credentials</span>
+                </span>
+                <div className="font-mono text-[11px] mt-1 space-y-0.5">
+                  <p className="text-slate-200">RFID Tag: <span className="text-amber-300 font-bold">{selectedStaff.rfidCard || 'Unassigned'}</span></p>
+                  <p className="text-slate-400 text-[10px]">QR Token: <span className="text-slate-300">{selectedStaff.qrCode ? selectedStaff.qrCode.substring(0, 16) + '...' : 'Unassigned'}</span></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" onClick={() => setProfileViewModalOpen(false)}>
+                Close Profile
+              </Button>
+            </div>
+          </div>
         )}
       </Dialog>
 
