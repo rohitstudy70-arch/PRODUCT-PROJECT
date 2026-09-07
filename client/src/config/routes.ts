@@ -1,0 +1,17 @@
+export const ROUTES = {
+  LOGIN: '/login',
+  FORGOT_PASSWORD: '/forgot-password',
+  RESET_PASSWORD: '/reset-password',
+  DASHBOARD: '/',
+  BRANCHES: '/branches',
+  STAFF: '/staff',
+  PRODUCTS: '/products',
+  INVENTORY: '/inventory',
+  TRANSFERS: '/transfers',
+  SECURITY: '/security',
+  RECEIVING: '/receiving',
+  AUDIT: '/audit-logs',
+  TRACKING: '/tracking',
+  TRACKING_REPORTS: '/tracking/reports',
+  STAFF_ACTIVITY: '/staff-activity'
+};
