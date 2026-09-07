@@ -185,7 +185,7 @@ export const StaffListPage: React.FC = () => {
         phone,
         role,
         branchId: branchId || null,
-        rfidCard: rfidCard && rfidCard.trim() ? rfidCard.trim() : undefined,
+        rfidCard: rfidCard && /[a-zA-Z0-9]/.test(rfidCard.trim()) ? rfidCard.trim() : undefined,
         avatar: avatar || null,
         fatherName,
         alternatePhone,
@@ -215,7 +215,13 @@ export const StaffListPage: React.FC = () => {
       setModalOpen(false);
       fetchData();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save staff details');
+      console.error('Staff save error:', err.response?.data);
+      const errData = err.response?.data;
+      if (errData?.errors && errData.errors.length > 0) {
+        toast.error(`${errData.message}: ${errData.errors.join(', ')}`);
+      } else {
+        toast.error(errData?.message || 'Failed to save staff details');
+      }
     }
   };
 
@@ -254,7 +260,7 @@ export const StaffListPage: React.FC = () => {
 
     try {
       await api.put(`/staff/${selectedStaff._id}`, {
-        rfidCard: quickRfidValue.trim() || null
+        rfidCard: quickRfidValue.trim() && /[a-zA-Z0-9]/.test(quickRfidValue.trim()) ? quickRfidValue.trim() : undefined
       });
       toast.success(`RFID Card assigned to ${selectedStaff.firstName} ${selectedStaff.lastName}`);
       setQuickRfidModalOpen(false);

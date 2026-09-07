@@ -8,7 +8,8 @@ import { getNextSequence, generatePaginationMeta } from '../../utils/helpers.js'
 import crypto from 'crypto';
 
 const normalizeRfid = (rfid) => {
-  return rfid ? String(rfid).replace(/[^a-zA-Z0-9]/g, '').trim() : null;
+  const clean = rfid ? String(rfid).replace(/[^a-zA-Z0-9]/g, '').trim() : '';
+  return clean || undefined;
 };
 
 export const createStaff = asyncHandler(async (req, res) => {
