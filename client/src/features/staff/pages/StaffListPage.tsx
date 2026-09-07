@@ -98,7 +98,7 @@ export const StaffListPage: React.FC = () => {
     setLoading(true);
     try {
       const staffResponse = await api.get('/staff', {
-        params: { page, limit: 10, search }
+        params: { page, limit: 50, search }
       });
       setStaffList(staffResponse.data.data);
       setTotalPages(staffResponse.data.meta?.pages || 1);
