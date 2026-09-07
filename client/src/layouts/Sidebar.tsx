@@ -39,7 +39,7 @@ export const Sidebar: React.FC = () => {
     { label: 'Inventory Control', path: ROUTES.INVENTORY, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager', 'warehouse_manager'] },
     { label: 'Transfers', path: ROUTES.TRANSFERS, icon: ArrowRightLeft, roles: ['super_admin', 'branch_admin', 'store_manager', 'warehouse_manager', 'authorized_person', 'staff'] },
     { label: 'Security Gate', path: ROUTES.SECURITY, icon: ShieldCheck, roles: ['super_admin', 'branch_admin', 'security_guard'] },
-    { label: 'Branch Receiving', path: ROUTES.RECEIVING, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager', 'warehouse_manager', 'authorized_person', 'security_guard', 'staff'] },
+    { label: 'Branch Receiving', path: ROUTES.RECEIVING, icon: Warehouse, roles: ['super_admin', 'branch_admin', 'store_manager', 'authorized_person', 'security_guard', 'staff'] },
     { label: 'Audit Trail', path: ROUTES.AUDIT, icon: ScrollText, roles: ['super_admin'] },
     { label: 'Live Staff Tracking', path: ROUTES.TRACKING, icon: MapPin, roles: ['super_admin'] },
     { label: 'Duty Reports', path: ROUTES.TRACKING_REPORTS, icon: FileSpreadsheet, roles: ['super_admin'] }
