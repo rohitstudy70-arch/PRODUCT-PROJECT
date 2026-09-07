@@ -1,3 +1,4 @@
+import { TemporaryPassModal } from '../../../components/shared/TemporaryPassModal';
 import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../../../components/shared/PageHeader';
 import { DataTable, Column } from '../../../components/shared/DataTable';
@@ -386,16 +387,33 @@ export const TransferPage: React.FC = () => {
       toast.success('Courier OTP verified & assigned successfully!');
 
       const courier = assignmentCouriers.find((c: any) => c._id === assignmentCourierId);
-      const items = selectedTransfer.items || [];
+      // items mapped below
+      const mappedItems = (selectedTransfer.items || []).map((it: any) => ({
+        name: it.productId?.name || 'Hardware Product',
+        productId: it.productId?.productId || 'N/A',
+        serialNumber: it.productId?.serialNumber || '',
+        imei: it.productId?.imei || '',
+        model: it.productId?.model || '',
+        qrCode: it.productId?.qrCode || ''
+      }));
+
       setTempPassData({
         transferId: selectedTransfer.transferId,
-        fromBranch: selectedTransfer.fromBranchId?.name,
-        toBranch: selectedTransfer.toBranchId?.name,
-        courier,
-        items,
+        fromBranch: selectedTransfer.fromBranchId?.name || '',
+        toBranch: selectedTransfer.toBranchId?.name || '',
+        courier: {
+          firstName: courier?.firstName || '',
+          lastName: courier?.lastName || '',
+          employeeId: courier?.employeeId || '',
+          phone: courier?.phone || '',
+          avatar: courier?.avatar || '',
+          designation: courier?.designation || 'Delivery Staff'
+        },
+        items: mappedItems,
         assignedBy: `${user?.firstName} ${user?.lastName}`,
         assignedAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
-        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        authCode: `AUTH-${selectedTransfer.transferId}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`
       });
       setTempPassModalOpen(true);
 
@@ -414,69 +432,6 @@ export const TransferPage: React.FC = () => {
     }
   };
 
-  const handlePrintTempPass = () => {
-    if (!tempPassData) return;
-    const items: any[] = tempPassData.items || [];
-    const itemRows = items.map((item: any) => `
-      <tr style="border-bottom:1px solid #eee">
-        <td style="padding:4px 8px;font-size:11px">${item.productId?.name || 'N/A'}</td>
-        <td style="padding:4px 8px;font-size:10px;font-family:monospace">${item.productId?.productId || 'N/A'}</td>
-        <td style="padding:4px 8px;font-size:10px;font-family:monospace">${item.productId?.serialNumber || 'N/A'}</td>
-        <td style="padding:4px 8px;font-size:10px;font-family:monospace">${item.productId?.imei || 'N/A'}</td>
-      </tr>`).join('');
-    const win = window.open('', '_blank', 'width=640,height=800');
-    if (!win) return;
-    win.document.write(`<html><head><title>Courier Temporary Pass</title>
-    <style>
-      body{margin:0;padding:20px;font-family:Arial,sans-serif;color:#000}
-      .pass{border:3px solid #000;border-radius:8px;padding:20px;max-width:580px;margin:0 auto}
-      .hdr{text-align:center;border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px}
-      .org{font-size:20px;font-weight:900;letter-spacing:2px}
-      .sec{margin-bottom:14px}
-      .sec-t{font-size:11px;font-weight:bold;color:#666;text-transform:uppercase;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px}
-      .row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
-      .lbl{color:#555;font-weight:bold}.val{font-weight:bold}
-      table{width:100%;border-collapse:collapse}
-      th{background:#000;color:#fff;padding:6px 8px;text-align:left;font-size:10px}
-      .vbox{background:#000;color:#fff;padding:8px 16px;border-radius:4px;text-align:center;font-weight:bold;margin:12px 0}
-      .footer{text-align:center;font-size:9px;color:#999;border-top:1px solid #eee;padding-top:10px;margin-top:16px}
-      .warn{background:#fffbe6;border:1px solid #faad14;border-radius:4px;padding:8px;font-size:10px;color:#856404;margin-top:10px}
-    </style></head>
-    <body onload="window.print()">
-    <div class="pass">
-      <div class="hdr">
-        <div class="org">ARSHI ENTERPRISE</div>
-        <div style="font-size:14px;font-weight:bold;margin-top:4px">COURIER TEMPORARY DISPATCH PASS</div>
-        <div style="font-size:12px;margin-top:4px">Transfer ID: <strong>${tempPassData.transferId}</strong></div>
-      </div>
-      <div class="sec">
-        <div class="sec-t">Courier Details</div>
-        <div class="row"><span class="lbl">Name:</span><span class="val">${tempPassData.courier?.firstName || ''} ${tempPassData.courier?.lastName || ''}</span></div>
-        <div class="row"><span class="lbl">Employee ID:</span><span class="val">${tempPassData.courier?.employeeId || ''}</span></div>
-        <div class="row"><span class="lbl">Phone:</span><span class="val">${tempPassData.courier?.phone || 'N/A'}</span></div>
-        <div class="row"><span class="lbl">Designation:</span><span class="val">${tempPassData.courier?.designation || 'Delivery Staff'}</span></div>
-      </div>
-      <div class="sec">
-        <div class="sec-t">Route Information</div>
-        <div class="row"><span class="lbl">From Branch:</span><span class="val">${tempPassData.fromBranch || ''}</span></div>
-        <div class="row"><span class="lbl">To Branch:</span><span class="val">${tempPassData.toBranch || ''}</span></div>
-        <div class="row"><span class="lbl">Assigned By:</span><span class="val">${tempPassData.assignedBy || ''} (Manager)</span></div>
-        <div class="row"><span class="lbl">Issued At:</span><span class="val">${tempPassData.assignedAt || ''}</span></div>
-      </div>
-      <div class="sec">
-        <div class="sec-t">Product Manifest (${items.length} items)</div>
-        <table>
-          <thead><tr><th>Product Name</th><th>Product ID</th><th>Serial No.</th><th>IMEI</th></tr></thead>
-          <tbody>${itemRows}</tbody>
-        </table>
-      </div>
-      <div class="vbox">VALID UNTIL: ${tempPassData.validUntil} (24 Hours)</div>
-      <div class="warn">This pass is valid for ONE delivery trip only. Must be shown at security gate for exit/entry clearance.</div>
-      <div class="footer">Arshi Enterprise - Warehouse Management System - Auto-generated Dispatch Pass</div>
-    </div>
-    </body></html>`);
-    win.document.close();
-  };
 
   const handleApprove = async (id: string) => {
     try {
@@ -1072,63 +1027,12 @@ export const TransferPage: React.FC = () => {
         </div>
       </Dialog>
 
-      {/* TEMPORARY PASS MODAL */}
-      <Dialog isOpen={tempPassModalOpen} onClose={() => setTempPassModalOpen(false)} title="Courier Temporary Dispatch Pass — Ready">
-        {tempPassData && (
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-              <span className="text-emerald-400 text-xl">OK</span>
-              <div>
-                <p className="text-xs font-bold text-emerald-300">OTP Verified! Courier assigned.</p>
-                <p className="text-[11px] text-emerald-400/70">Print this Temporary Pass and give to Courier Boy for gate exit clearance.</p>
-              </div>
-            </div>
-
-            <div className="border-2 border-black rounded-lg p-4 bg-white text-black text-xs font-mono max-w-sm mx-auto">
-              <div className="text-center border-b border-black pb-2 mb-3">
-                <div className="text-base font-black tracking-widest">ARSHI ENTERPRISE</div>
-                <div className="text-[10px] text-gray-500 font-bold">COURIER TEMPORARY DISPATCH PASS</div>
-                <div className="text-[11px] text-gray-600 mt-1">Transfer ID: <strong>{tempPassData.transferId}</strong></div>
-              </div>
-              <div className="space-y-1 mb-3">
-                <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 pb-1 mb-1.5">Courier Details</div>
-                <div className="flex justify-between"><span className="text-gray-500">Name:</span><span className="font-bold">{tempPassData.courier?.firstName} {tempPassData.courier?.lastName}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">ID:</span><span className="font-mono font-bold">{tempPassData.courier?.employeeId}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Phone:</span><span className="font-bold">{tempPassData.courier?.phone || 'N/A'}</span></div>
-              </div>
-              <div className="space-y-1 mb-3">
-                <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 pb-1 mb-1.5">Route</div>
-                <div className="flex justify-between"><span className="text-gray-500">From:</span><span className="font-bold">{tempPassData.fromBranch}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">To:</span><span className="font-bold">{tempPassData.toBranch}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Items:</span><span className="font-bold">{tempPassData.items?.length || 0} products</span></div>
-              </div>
-              <div className="space-y-1 mb-3">
-                <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200 pb-1 mb-1.5">Products</div>
-                {(tempPassData.items || []).slice(0, 3).map((item: any, idx: number) => (
-                  <div key={idx} className="text-[10px]">
-                    <span className="font-bold">{item.productId?.name || 'N/A'}</span>
-                    <span className="text-gray-500 ml-1">SN: {item.productId?.serialNumber || 'N/A'} | IMEI: {item.productId?.imei || 'N/A'}</span>
-                  </div>
-                ))}
-                {(tempPassData.items || []).length > 3 && <div className="text-[10px] text-gray-500">+{tempPassData.items.length - 3} more...</div>}
-              </div>
-              <div className="bg-black text-white text-center py-1.5 px-3 rounded font-black text-xs tracking-wider mt-2">
-                VALID 24HRS - {tempPassData.validUntil}
-              </div>
-              <div className="text-center text-[8px] text-gray-400 mt-2 border-t border-gray-200 pt-1.5">
-                Arshi Enterprise - Dispatch Pass
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center space-x-3 pt-2">
-              <Button variant="outline" onClick={() => setTempPassModalOpen(false)}>Close</Button>
-              <Button onClick={handlePrintTempPass} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
-                Print Temporary Pass
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
+      {/* Standard Official Temporary Pass Modal */}
+      <TemporaryPassModal
+        isOpen={tempPassModalOpen}
+        onClose={() => setTempPassModalOpen(false)}
+        data={tempPassData}
+      />
     </div>
   );
 };

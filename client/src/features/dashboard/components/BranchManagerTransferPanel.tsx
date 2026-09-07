@@ -1,3 +1,4 @@
+import { TemporaryPassModal, TemporaryPassData } from '../../../components/shared/TemporaryPassModal';
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowRightLeft, 
@@ -71,6 +72,8 @@ export const BranchManagerTransferPanel: React.FC = () => {
   const [otpStep, setOtpStep] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [sendingOtp, setSendingOtp] = useState(false);
+  const [tempPassOpen, setTempPassOpen] = useState(false);
+  const [tempPassData, setTempPassData] = useState<TemporaryPassData | null>(null);
   const [otpInfo, setOtpInfo] = useState<{ phoneMasked?: string; courierName?: string; otpDevMode?: string } | null>(null);
 
   const getId = (value: any) => value ? (typeof value === 'object' ? value._id : value) : '';
@@ -235,11 +238,50 @@ export const BranchManagerTransferPanel: React.FC = () => {
         otp: otpInput.trim()
       });
       
-      setActionSuccess(`Courier assigned & verified via OTP successfully for Transfer ${selectedTransfer.transferId}!`);
-      setTimeout(() => {
-        setAssignModalOpen(false);
-        fetchData();
-      }, 1200);
+      setActionSuccess(`Courier assigned & verified via OTP successfully!`);
+
+      // Fetch full transfer details including hardware items
+      let itemsList: any[] = [];
+      try {
+        const fullRes = await API.get(`/transfers/${selectedTransfer._id}`);
+        const rawItems = fullRes.data?.data?.items || [];
+        itemsList = rawItems.map((it: any) => ({
+          name: it.productId?.name || 'Hardware Product',
+          productId: it.productId?.productId || 'N/A',
+          serialNumber: it.productId?.serialNumber || '',
+          imei: it.productId?.imei || '',
+          model: it.productId?.model || '',
+          qrCode: it.productId?.qrCode || ''
+        }));
+      } catch (err) {
+        console.error('Error fetching full transfer for pass:', err);
+      }
+
+      const courier = couriers.find(c => c._id === selectedCourierId);
+      const authCode = `AUTH-${selectedTransfer.transferId}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      setTempPassData({
+        transferId: selectedTransfer.transferId,
+        fromBranch: typeof selectedTransfer.fromBranchId === 'object' ? selectedTransfer.fromBranchId?.name : String(selectedTransfer.fromBranchId || ''),
+        toBranch: typeof selectedTransfer.toBranchId === 'object' ? selectedTransfer.toBranchId?.name : String(selectedTransfer.toBranchId || ''),
+        courier: {
+          firstName: courier?.firstName || selectedCourierObj?.firstName || 'Courier',
+          lastName: courier?.lastName || selectedCourierObj?.lastName || '',
+          employeeId: courier?.employeeId || selectedCourierObj?.employeeId || '',
+          phone: courier?.phone || selectedCourierObj?.phone || '',
+          avatar: courier?.avatar || selectedCourierObj?.avatar || '',
+          designation: courier?.dutyStatus || 'Delivery Staff'
+        },
+        items: itemsList,
+        assignedBy: `${user?.firstName || 'Branch'} ${user?.lastName || 'Manager'}`,
+        assignedAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        authCode
+      });
+
+      setAssignModalOpen(false);
+      setTempPassOpen(true);
+      fetchData();
     } catch (err: any) {
       setActionError(err.response?.data?.message || 'Failed to verify OTP / assign courier');
     } finally {
@@ -676,6 +718,12 @@ export const BranchManagerTransferPanel: React.FC = () => {
           </div>
         </div>
       )}
+          {/* Official Temporary Dispatch Pass Modal */}
+      <TemporaryPassModal
+        isOpen={tempPassOpen}
+        onClose={() => setTempPassOpen(false)}
+        data={tempPassData}
+      />
     </div>
   );
 };
