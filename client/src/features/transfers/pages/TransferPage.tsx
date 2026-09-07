@@ -9,7 +9,7 @@ import { Badge } from '../../../components/ui/badge';
 import { QRScanner } from '../../../components/shared/QRScanner';
 import api from '../../../config/api';
 import { Toaster, toast } from 'sonner';
-import { Plus, AlertCircle, Eye, Scan, UserCheck } from 'lucide-react';
+import { Plus, AlertCircle, Eye, Scan, UserCheck, Printer } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 interface Transfer {
@@ -324,6 +324,48 @@ export const TransferPage: React.FC = () => {
     }
   };
 
+  const handleOpenPassForTransfer = async (transferId: string) => {
+    try {
+      const res = await api.get(`/transfers/${transferId}`);
+      const t = res.data?.data;
+      if (!t) return;
+
+      const itemsList = (t.items || []).map((it: any) => ({
+        name: it.productId?.name || 'Hardware Product',
+        productId: it.productId?.productId || 'N/A',
+        serialNumber: it.productId?.serialNumber || '',
+        imei: it.productId?.imei || '',
+        model: it.productId?.model || '',
+        qrCode: it.productId?.qrCode || ''
+      }));
+
+      const courierStaff = t.assignedStaffId || {};
+      const authCode = `AUTH-${t.transferId}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      setTempPassData({
+        transferId: t.transferId,
+        fromBranch: t.fromBranchId?.name || '',
+        toBranch: t.toBranchId?.name || '',
+        courier: {
+          firstName: courierStaff.firstName || 'Courier',
+          lastName: courierStaff.lastName || '',
+          employeeId: courierStaff.employeeId || '',
+          phone: courierStaff.phone || '',
+          avatar: courierStaff.avatar || '',
+          designation: courierStaff.designation || 'Delivery Staff'
+        },
+        items: itemsList,
+        assignedBy: t.approvedBy ? `${t.approvedBy.firstName} ${t.approvedBy.lastName}` : `${user?.firstName} ${user?.lastName}`,
+        assignedAt: t.approvedAt ? new Date(t.approvedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        authCode
+      });
+      setTempPassModalOpen(true);
+    } catch (err) {
+      toast.error('Failed to load temporary pass details');
+    }
+  };
+
   const handleViewDetail = async (id: string) => {
     try {
       const response = await api.get(`/transfers/${id}`);
@@ -522,10 +564,24 @@ export const TransferPage: React.FC = () => {
       header: 'Actions',
       accessorKey: 'actions',
       render: (item) => (
-        <Button variant="outline" size="sm" onClick={() => handleViewDetail(item._id)} className="h-8 flex items-center space-x-1">
-          <Eye className="h-4 w-4" />
-          <span>View</span>
-        </Button>
+        <div className="flex items-center space-x-1.5">
+          <Button variant="outline" size="sm" onClick={() => handleViewDetail(item._id)} className="h-8 flex items-center space-x-1">
+            <Eye className="h-4 w-4" />
+            <span>View</span>
+          </Button>
+          {item.assignedStaffId && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleOpenPassForTransfer(item._id)} 
+              className="h-8 flex items-center space-x-1 border-emerald-500/40 text-emerald-400 bg-emerald-950/20 hover:bg-emerald-900/30 hover:text-emerald-300 font-semibold"
+              title="Print Temporary Dispatch Pass"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              <span>Pass</span>
+            </Button>
+          )}
+        </div>
       )
     }
   ];
@@ -989,9 +1045,20 @@ export const TransferPage: React.FC = () => {
                 <Button onClick={() => handleApprove(selectedTransfer._id)}>Approve Transfer</Button>
               )}
 
+              {/* Print Temporary Pass button anytime courier is assigned */}
+              {selectedTransfer.assignedStaffId && (
+                <Button 
+                  onClick={() => handleOpenPassForTransfer(selectedTransfer._id)} 
+                  className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Print Pass</span>
+                </Button>
+              )}
+
               {/* Scan product pickup & verification button for all active statuses */}
               {['approved', 'preparing', 'ready_for_dispatch', 'in_transit'].includes(selectedTransfer.status) && (
-                <Button onClick={() => handleOpenStoreRoomScan(selectedTransfer)} className="flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={() => handleOpenStoreRoomScan(selectedTransfer)} className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white">
                   <Scan className="h-4 w-4" />
                   <span>Full Camera Scanner</span>
                 </Button>

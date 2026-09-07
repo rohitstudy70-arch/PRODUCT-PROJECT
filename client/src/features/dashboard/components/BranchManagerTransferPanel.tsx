@@ -1,6 +1,7 @@
 import { TemporaryPassModal, TemporaryPassData } from '../../../components/shared/TemporaryPassModal';
 import React, { useState, useEffect } from 'react';
 import { 
+  Printer,
   ArrowRightLeft, 
   UserCheck, 
   Clock, 
@@ -54,6 +55,8 @@ interface CourierStaff {
 export const BranchManagerTransferPanel: React.FC = () => {
   const { user } = useAuthStore();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [assignedTransfers, setAssignedTransfers] = useState<Transfer[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'assigned'>('pending');
   const [couriers, setCouriers] = useState<CourierStaff[]>([]);
   const [loading, setLoading] = useState(true);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -117,6 +120,16 @@ export const BranchManagerTransferPanel: React.FC = () => {
       });
       setTransfers(pendingTransfers);
 
+      // Filter assigned transfers so manager can view/print pass anytime
+      const assigned = allTransfers.filter(t => {
+        if (['arrived', 'received', 'cancelled', 'rejected'].includes(t.status)) return false;
+        if (!t.assignedStaffId) return false;
+        if (!branchId || user?.role === 'super_admin') return true;
+        const fromId = getId(t.fromBranchId);
+        return fromId === branchId;
+      });
+      setAssignedTransfers(assigned);
+
       const courierRes = await API.get('/transfers/available-couriers', {
         params: branchId ? { branchId } : undefined
       });
@@ -174,6 +187,48 @@ export const BranchManagerTransferPanel: React.FC = () => {
   };
 
   // Step 1: Send SMS OTP to Courier's phone
+    const handleOpenPassForTransfer = async (transferId: string) => {
+    try {
+      const res = await API.get(`/transfers/${transferId}`);
+      const t = res.data?.data;
+      if (!t) return;
+
+      const itemsList = (t.items || []).map((it: any) => ({
+        name: it.productId?.name || 'Hardware Product',
+        productId: it.productId?.productId || 'N/A',
+        serialNumber: it.productId?.serialNumber || '',
+        imei: it.productId?.imei || '',
+        model: it.productId?.model || '',
+        qrCode: it.productId?.qrCode || ''
+      }));
+
+      const courier = t.assignedStaffId || {};
+      const authCode = `AUTH-${t.transferId}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+      setTempPassData({
+        transferId: t.transferId,
+        fromBranch: typeof t.fromBranchId === 'object' ? t.fromBranchId?.name : String(t.fromBranchId || ''),
+        toBranch: typeof t.toBranchId === 'object' ? t.toBranchId?.name : String(t.toBranchId || ''),
+        courier: {
+          firstName: courier.firstName || 'Courier',
+          lastName: courier.lastName || '',
+          employeeId: courier.employeeId || '',
+          phone: courier.phone || '',
+          avatar: courier.avatar || '',
+          designation: courier.designation || 'Delivery Staff'
+        },
+        items: itemsList,
+        assignedBy: t.approvedBy ? `${t.approvedBy.firstName} ${t.approvedBy.lastName}` : `${user?.firstName || 'Branch'} ${user?.lastName || 'Manager'}`,
+        assignedAt: t.approvedAt ? new Date(t.approvedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+        authCode
+      });
+      setTempPassOpen(true);
+    } catch (err) {
+      console.error('Failed to load pass:', err);
+    }
+  };
+
   const handleSendOtp = async () => {
     if (!selectedTransfer || !selectedCourierId) {
       setActionError('Please scan or select a Courier Boy first.');
@@ -338,66 +393,135 @@ export const BranchManagerTransferPanel: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pending Transfer Requests (2 columns) */}
         <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div className="flex items-center space-x-2">
               <Clock className="w-5 h-5 text-amber-400" />
-              <h3 className="font-semibold text-slate-100">Pending Transfers Needing Courier</h3>
+              <h3 className="font-semibold text-slate-100">Transfer Orders & Courier Dispatch</h3>
             </div>
-            <span className="text-xs text-slate-400">Auto-updating</span>
+            
+            {/* Tabs: Awaiting vs Assigned (Print Pass) */}
+            <div className="flex items-center space-x-2 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveTab('pending')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${activeTab === 'pending' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Awaiting Courier ({transfers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('assigned')}
+                className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center space-x-1 ${activeTab === 'assigned' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                <span>🖨️ Assigned / Print Pass ({assignedTransfers.length})</span>
+              </button>
+            </div>
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-slate-500 text-sm">Loading pending transfers...</div>
-          ) : transfers.length === 0 ? (
-            <div className="py-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500/50 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-300">All Transfer Orders Assigned!</p>
-              <p className="text-xs text-slate-500 mt-1">There are no pending requests waiting for courier assignment.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {transfers.map((t) => (
-                <div 
-                  key={t._id}
-                  className="p-4 bg-slate-950/60 border border-slate-800 hover:border-blue-500/40 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono font-bold text-blue-400 text-sm">{t.transferId}</span>
-                      <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
-                        Awaiting Courier
-                      </Badge>
-                      <span className="text-xs text-slate-500">
-                        {new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-4 text-xs text-slate-300">
-                      <span className="flex items-center space-x-1">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>By: <strong className="text-slate-200">{t.requestedBy ? `${t.requestedBy.firstName} ${t.requestedBy.lastName}` : 'Authorized Person'}</strong></span>
-                      </span>
-                      <span className="flex items-center space-x-1">
-                        <Package className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{t.totalItems} Products</span>
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 flex items-center space-x-2">
-                      <span className="text-slate-300 font-medium">{t.fromBranchId?.name}</span>
-                      <ArrowRightLeft className="w-3 h-3 text-slate-500" />
-                      <span className="text-blue-400 font-medium">{t.toBranchId?.name}</span>
-                    </div>
-                  </div>
-
-                  <Button 
-                    onClick={() => handleOpenAssignModal(t)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30 text-xs font-semibold px-4 py-2 rounded-lg"
+            <div className="py-12 text-center text-slate-500 text-sm">Loading transfers...</div>
+          ) : activeTab === 'pending' ? (
+            transfers.length === 0 ? (
+              <div className="py-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500/50 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-300">All Transfer Orders Assigned!</p>
+                <p className="text-xs text-slate-500 mt-1">There are no pending requests waiting for courier assignment.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {transfers.map((t) => (
+                  <div 
+                    key={t._id}
+                    className="p-4 bg-slate-950/60 border border-slate-800 hover:border-blue-500/40 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
                   >
-                    <UserCheck className="w-4 h-4 mr-1.5" />
-                    Assign Courier
-                  </Button>
-                </div>
-              ))}
-            </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-blue-400 text-sm">{t.transferId}</span>
+                        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
+                          Awaiting Courier
+                        </Badge>
+                        <span className="text-xs text-slate-500">
+                          {new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs text-slate-300">
+                        <span className="flex items-center space-x-1">
+                          <User className="w-3.5 h-3.5 text-slate-400" />
+                          <span>By: <strong className="text-slate-200">{t.requestedBy ? `${t.requestedBy.firstName} ${t.requestedBy.lastName}` : 'Authorized Person'}</strong></span>
+                        </span>
+                        <span className="flex items-center space-x-1">
+                          <Package className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{t.totalItems} Products</span>
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400 flex items-center space-x-2">
+                        <span className="text-slate-300 font-medium">{t.fromBranchId?.name}</span>
+                        <ArrowRightLeft className="w-3 h-3 text-slate-500" />
+                        <span className="text-blue-400 font-medium">{t.toBranchId?.name}</span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => handleOpenAssignModal(t)}
+                      className="bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-900/30 text-xs font-semibold px-4 py-2 rounded-lg"
+                    >
+                      <UserCheck className="w-4 h-4 mr-1.5" />
+                      Assign Courier
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            /* ASSIGNED TAB - ANYTIME PRINT PASS */
+            assignedTransfers.length === 0 ? (
+              <div className="py-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
+                <Package className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-300">No Assigned Transfers Yet</p>
+                <p className="text-xs text-slate-500 mt-1">Assign a courier to an order to view and print its temporary pass here.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {assignedTransfers.map((t) => (
+                  <div 
+                    key={t._id}
+                    className="p-4 bg-slate-950/60 border border-emerald-500/20 hover:border-emerald-500/50 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-emerald-400 text-sm">{t.transferId}</span>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs uppercase">
+                          {t.status.replace(/_/g, ' ')}
+                        </Badge>
+                        <span className="text-xs text-slate-500">
+                          {new Date(t.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-4 text-xs text-slate-300">
+                        <span className="flex items-center space-x-1.5 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                          <User className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Assigned Courier: <strong className="text-emerald-300">{t.assignedStaffId ? `${t.assignedStaffId.firstName} ${t.assignedStaffId.lastName}` : 'Assigned'}</strong></span>
+                        </span>
+                        <span className="text-slate-400">{t.totalItems} Items</span>
+                      </div>
+                      <div className="text-xs text-slate-400 flex items-center space-x-2">
+                        <span className="text-slate-300 font-medium">{t.fromBranchId?.name}</span>
+                        <ArrowRightLeft className="w-3 h-3 text-slate-500" />
+                        <span className="text-blue-400 font-medium">{t.toBranchId?.name}</span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={() => handleOpenPassForTransfer(t._id)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30 text-xs font-bold px-4 py-2 rounded-lg flex items-center space-x-1.5"
+                    >
+                      <Printer className="w-4 h-4 mr-1" />
+                      <span>Print Temporary Pass</span>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
 
