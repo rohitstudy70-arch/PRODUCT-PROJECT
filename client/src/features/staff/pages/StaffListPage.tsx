@@ -185,7 +185,7 @@ export const StaffListPage: React.FC = () => {
         phone,
         role,
         branchId: branchId || null,
-        rfidCard: rfidCard || null,
+        rfidCard: rfidCard && rfidCard.trim() ? rfidCard.trim() : undefined,
         avatar: avatar || null,
         fatherName,
         alternatePhone,
@@ -1104,8 +1104,20 @@ export const StaffListPage: React.FC = () => {
               <label className="text-xs font-semibold text-slate-400">Security Access Role *</label>
               <select
                 value={role}
-                onChange={(e: any) => setRole(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                onChange={(e: any) => {
+                  const newRole = e.target.value;
+                  setRole(newRole);
+                  switch (newRole) {
+                    case 'warehouse_manager': setDesignation('Warehouse Inventory Manager'); break;
+                    case 'branch_admin': setDesignation('Branch Administrator'); break;
+                    case 'store_manager': setDesignation('Branch Manager'); break;
+                    case 'authorized_person': setDesignation('Authorized Product Officer'); break;
+                    case 'security_guard': setDesignation('Gate Security Officer'); break;
+                    case 'staff': setDesignation('Delivery Staff / Courier'); break;
+                    default: setDesignation(newRole.replace('_', ' ').toUpperCase()); break;
+                  }
+                }}
+                className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 cursor-pointer font-semibold"
               >
                 <option value="staff">Delivery Staff / Courier</option>
                 <option value="security_guard">Security Guard Scanner</option>

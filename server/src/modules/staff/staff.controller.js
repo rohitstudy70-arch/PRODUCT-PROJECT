@@ -82,7 +82,7 @@ export const createStaff = asyncHandler(async (req, res) => {
     password,
     phone,
     role,
-    rfidCard: cleanRfid,
+    rfidCard: cleanRfid || undefined,
     avatar: avatar || null,
     fatherName: fatherName || '',
     alternatePhone: alternatePhone || '',
@@ -219,6 +219,7 @@ export const updateStaff = asyncHandler(async (req, res) => {
   if (addressDetails) updateFields.addressDetails = addressDetails;
   if (avatar !== undefined) updateFields.avatar = avatar;
   
+  let unsetFields = {};
   if (rfidCard !== undefined) {
     const cleanRfid = normalizeRfid(rfidCard);
     if (cleanRfid) {
@@ -226,13 +227,20 @@ export const updateStaff = asyncHandler(async (req, res) => {
       if (existing) {
         throw new ApiError(400, `RFID Card ${cleanRfid} is already assigned to ${existing.firstName} ${existing.lastName} (${existing.employeeId})`);
       }
+      updateFields.rfidCard = cleanRfid;
+    } else {
+      unsetFields.rfidCard = 1;
     }
-    updateFields.rfidCard = cleanRfid;
+  }
+
+  const updateQuery = { $set: updateFields };
+  if (Object.keys(unsetFields).length > 0) {
+    updateQuery.$unset = unsetFields;
   }
 
   const updatedStaff = await Staff.findByIdAndUpdate(
     req.params.id,
-    { $set: updateFields },
+    updateQuery,
     { new: true, runValidators: true }
   ).select('-password');
 
